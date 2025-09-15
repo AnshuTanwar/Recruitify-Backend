@@ -17,5 +17,10 @@
   "scripts": {
     "start": "nodemon server.js",
     "production": "node server.js"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.2",
+    "express": "^5.1.0",
+    "mongodb": "^6.19.0"
   }
 }

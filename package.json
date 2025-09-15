@@ -1,0 +1,21 @@
+{
+  "name": "recruitify-backend",
+  "version": "1.0.0",
+  "description": "Recruitfy's backend",
+  "homepage": "https://github.com/AnshuTanwar/Recruitify-Backend#readme",
+  "bugs": {
+    "url": "https://github.com/AnshuTanwar/Recruitify-Backend/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AnshuTanwar/Recruitify-Backend.git"
+  },
+  "license": "ISC",
+  "author": "Aanshu Tanwar",
+  "type": "commonjs",
+  "main": "server.js ",
+  "scripts": {
+    "start": "nodemon server.js",
+    "production": "node server.js"
+  }
+}

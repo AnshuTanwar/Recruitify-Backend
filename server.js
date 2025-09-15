@@ -29,7 +29,7 @@ async function connectDB() {
     }
 }
 
-// --- Routes ---
+// Routes
 
 // Start Server
 async function startServer() {
@@ -42,7 +42,7 @@ async function startServer() {
 
 startServer();
 
-// --- Graceful Shutdown ---
+// Graceful Shutdown
 process.on("SIGINT", async () => {
     console.log("\n Shutting down...");
     if (client) await client.close();

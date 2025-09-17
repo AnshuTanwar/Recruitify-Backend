@@ -1,6 +1,6 @@
 require("dotenv").config();
 const express = require("express");
-const { MongoClient } = require("mongodb");
+const mongoose = require("mongoose");
 
 const app = express();
 
@@ -15,14 +15,14 @@ if (!URI) {
 // Middleware
 app.use(express.json());
 
-// Database Setup
-let client;
-
+// Database Setup (with Mongoose)
 async function connectDB() {
-    client = new MongoClient(URI);
     try {
-        await client.connect();
-        console.log("Connected to MongoDB");
+        await mongoose.connect(URI, {
+            useNewUrlParser: true,
+            useUnifiedTopology: true,
+        });
+        console.log("Connected to MongoDB with Mongoose");
     } catch (err) {
         console.error("MongoDB connection failed:", err.message);
         process.exit(1);
@@ -30,21 +30,16 @@ async function connectDB() {
 }
 
 // Routes
+app.get("/", (req, res) => {
+    res.send("API is working...");
+});
 
 // Start Server
 async function startServer() {
     await connectDB();
-
     app.listen(PORT, () => {
-        console.log(`Server running at http://localhost:${PORT}`);
+        console.log(`Server running on http://localhost:${PORT}`);
     });
 }
 
 startServer();
-
-// Graceful Shutdown
-process.on("SIGINT", async () => {
-    console.log("\n Shutting down...");
-    if (client) await client.close();
-    process.exit(0);
-});

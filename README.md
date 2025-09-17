@@ -39,7 +39,7 @@ Make sure you have installed:
 ### Installation
 1. Clone the repository:
    ```
-   git clone https://github.com/AnshuTanwar/recruitify-backend.git
+   git clone https://github.com/AnshuTanwar/Recruitify-Backend
    cd recruitify-backend
    ```
 

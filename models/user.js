@@ -19,7 +19,7 @@ const userSchema = new mongoose.Schema({
     },
     role : {
         type: String,
-        enum: ["admin", "candidate", "recruiter"],
+        enum: ["Admin", "Candidate", "Recruiter"],
         required: true
     },
     provider : {
@@ -36,7 +36,8 @@ const userSchema = new mongoose.Schema({
     },
     lastLogin: {
         type: Date
-    }
+    },
+    refreshTokens: { type: [String], default: [] }
 }, {
     timestamps: true,
     discriminatorKey: "role"

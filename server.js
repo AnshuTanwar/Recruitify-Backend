@@ -1,8 +1,16 @@
 require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
+const cookieParser = require("cookie-parser");
+const passport = require("passport");
+require("./config/passport");
+
+const authRoutes = require("./routes/authRoutes");
 
 const app = express();
+app.use(express.json());
+app.use(cookieParser());
+app.use(passport.initialize());
 
 // Config
 const PORT = process.env.PORT || 5050;
@@ -15,7 +23,7 @@ if (!URI) {
 // Middleware
 app.use(express.json());
 
-// Database Setup (with Mongoose)
+// Database Setup
 async function connectDB() {
     try {
         await mongoose.connect(URI, {
@@ -30,9 +38,9 @@ async function connectDB() {
 }
 
 // Routes
-app.get("/", (req, res) => {
-    res.send("API is working...");
-});
+app.use("/api/auth", authRoutes);
+
+module.exports = app;
 
 // Start Server
 async function startServer() {

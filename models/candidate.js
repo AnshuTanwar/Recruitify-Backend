@@ -1,29 +1,23 @@
-import mongoose from "mongoose";
-import { User } from "../models/user.js";
+const mongoose = require("mongoose");
+const User = require("./User");
 
-const { Schema } = mongoose;
-
-const CandidateSchema = new Schema({
+const candidateSchema = new mongoose.Schema({
     location: String,
+    bio: String,
     phone: String,
     experience: Number,
-    skills: [
-        {
-            type: String,
-            index: true,
-        },
-    ],
-    resume: [
+    skills: [{ type: String, index: true }],
+    resumes: [
         {
             url: String,
-            uploadedAt: { type: Date, default: Date.now },
-        },
+            uploadedAt: { type: Date, default: Date.now }
+        }
     ],
-    appliedJobs: [{ type: Schema.Types.ObjectId, ref: "Job" }],
+    appliedJobs: [{ type: mongoose.Schema.Types.ObjectId, ref: "Job" }]
 });
 
-CandidateSchema.path("resume").validate(function (resume) {
-    return !resume || resume.length <= 3;
+candidateSchema.path("resumes").validate(function (resumes) {
+    return resumes.length <= 3;
 }, "You can only upload up to 3 resumes.");
 
-export const Candidate = User.discriminator("Candidate", CandidateSchema);
+module.exports = User.discriminator("Candidate", candidateSchema);

@@ -6,7 +6,9 @@ const {
   login,
   googleCallback,
   refresh,
-  logout
+  logout,
+  forgotPassword,
+  resetPassword
 } = require("../controllers/authController");
 
 // Local Signup/Login
@@ -28,5 +30,9 @@ router.get(
   passport.authenticate("google", { session: false, failureRedirect: "/login" }),
   googleCallback
 );
+
+//Forgot Password and Reset
+router.post("/forgot-password", forgotPassword);
+router.post("/reset-password/:userId/:token", resetPassword);
 
 module.exports = router;

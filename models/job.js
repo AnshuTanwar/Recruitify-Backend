@@ -43,6 +43,4 @@ const jobSchema = new mongoose.Schema(
     { timestamps: true }
 );
 
-jobSchema.index({ skillsRequired: 1 });
-
 module.exports = mongoose.model("Job", jobSchema);

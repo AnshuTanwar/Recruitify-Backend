@@ -1,4 +1,11 @@
-const { S3Client, PutObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3");
+const {
+    S3Client,
+    PutObjectCommand,
+    DeleteObjectCommand,
+    GetObjectCommand,
+} = require("@aws-sdk/client-s3");
+const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
+const crypto = require("crypto");
 
 const s3 = new S3Client({
     region: process.env.AWS_REGION,
@@ -8,22 +15,26 @@ const s3 = new S3Client({
     },
 });
 
+// Upload resume buffer to S3
 async function uploadBufferToS3(buffer, contentType, originalName, userId) {
-    const key = `resumes/${userId}/${Date.now()}-${originalName.replace(/\s+/g, "_")}`;
+    const safeName = originalName.replace(/\s+/g, "_");
+    const key = `resumes/${userId}/${Date.now()}-${crypto.randomBytes(6).toString("hex")}-${safeName}`;
+
     const command = new PutObjectCommand({
         Bucket: process.env.S3_BUCKET,
         Key: key,
         Body: buffer,
         ContentType: contentType,
     });
+
     await s3.send(command);
-    return {
-        key,
-        url: `${process.env.S3_PUBLIC_URL}/${key}`,
-    };
+
+    return { key };
 }
 
+// Delete resume by key
 async function deleteFromS3(key) {
+    if (!key) return;
     const command = new DeleteObjectCommand({
         Bucket: process.env.S3_BUCKET,
         Key: key,
@@ -31,4 +42,20 @@ async function deleteFromS3(key) {
     await s3.send(command);
 }
 
-module.exports = { uploadBufferToS3, deleteFromS3 };
+// Generate a presigned URL (default 15 mins)
+async function getPresignedUrl(key, expiresInSeconds = 900) {
+    if (!key) throw new Error("S3 key is required");
+
+    const command = new GetObjectCommand({
+        Bucket: process.env.S3_BUCKET,
+        Key: key,
+    });
+
+    return getSignedUrl(s3, command, { expiresIn: expiresInSeconds });
+}
+
+module.exports = {
+    uploadBufferToS3,
+    deleteFromS3,
+    getPresignedUrl,
+};

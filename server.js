@@ -10,6 +10,7 @@ const authRoutes = require("./routes/authRoutes");
 const candidateRoutes = require("./routes/candidateRoutes");
 const recruiterRoutes = require("./routes/recruiterRoutes");
 const recruiterJobRoutes = require("./routes/recruiterJobRoutes");
+const recruiterApplicationRoutes = require("./routes/recruiterApplicationRoutes")
 const errorHandler = require("./middlewares/errorHandler");
 
 const app = express();
@@ -39,13 +40,10 @@ if (!URI) {
 // Database Setup
 async function connectDB() {
     try {
-        await mongoose.connect(URI, {
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
-        });
-        console.log("Connected to MongoDB with Mongoose");
+        await mongoose.connect(URI);
+        console.log("✅ Connected to MongoDB with Mongoose");
     } catch (err) {
-        console.error("MongoDB connection failed:", err.message);
+        console.error("❌ MongoDB connection failed:", err.message);
         process.exit(1);
     }
 }
@@ -55,6 +53,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/candidate", candidateRoutes);
 app.use("/api/recruiter", recruiterRoutes);
 app.use("/api/recruiter/job", recruiterJobRoutes);
+app.use("/api/recruiter", recruiterApplicationRoutes);
 
 
 app.use(errorHandler);

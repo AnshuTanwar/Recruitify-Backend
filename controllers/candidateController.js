@@ -1,6 +1,6 @@
 const Candidate = require("../models/candidate");
 const User = require("../models/User");
-const { uploadBufferToS3, deleteFromS3 } = require("../utils/s3Helper");
+const { uploadBufferToS3, deleteFromS3, getPresignedUrl } = require("../utils/s3Helper");
 
 // GET /api/candidate/profile
 exports.getProfile = async (req, res, next) => {
@@ -63,9 +63,18 @@ exports.uploadResume = async (req, res, next) => {
         }
 
         // upload to s3
-        const { key, url } = await uploadBufferToS3(req.file.buffer, req.file.mimetype, req.file.originalname, req.user._id);
+        const { key } = await uploadBufferToS3(
+            req.file.buffer,
+            req.file.mimetype,
+            req.file.originalname,
+            req.user._id
+        );
 
-        const resumeObj = { url, key, originalName: req.file.originalname, uploadedAt: new Date() };
+        const resumeObj = {
+            key,
+            originalName: req.file.originalname,
+            uploadedAt: new Date()
+        };
 
         candidate.resumes = candidate.resumes || [];
         candidate.resumes.push(resumeObj);
@@ -123,6 +132,31 @@ exports.getCandidateJobs = async (req, res, next) => {
         }).sort("-createdAt");
 
         res.json(jobs);
+    } catch (err) {
+        next(err);
+    }
+};
+
+// GET /api/candidate/resumes/:resumeKey/url
+exports.downloadResume = async (req, res, next) => {
+    try {
+        const candidate = await Candidate.findById(req.user._id);
+        if (!candidate) {
+            const err = new Error("Candidate not found");
+            err.statusCode = 404;
+            return next(err);
+        }
+
+        const { resumeKey } = req.params;
+        const resume = (candidate.resumes || []).find(r => r.key === resumeKey);
+        if (!resume) {
+            const err = new Error("Resume not found");
+            err.statusCode = 404;
+            return next(err);
+        }
+
+        const url = await getPresignedUrl(resume.key, 900);
+        res.json({ url, expiresIn: 900 });
     } catch (err) {
         next(err);
     }

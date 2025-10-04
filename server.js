@@ -1,11 +1,13 @@
 require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
+const { connectRedis } = require("./config/redis");
 const cookieParser = require("cookie-parser");
 const passport = require("passport");
 const cors = require("cors");
 require("./config/passport");
 
+require("./jobs/atsQueue");
 const authRoutes = require("./routes/authRoutes");
 const candidateRoutes = require("./routes/candidateRoutes");
 const recruiterRoutes = require("./routes/recruiterRoutes");
@@ -22,6 +24,11 @@ const corsOptions = {
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 };
+
+// connect Redis at startup
+connectRedis()
+    .then(() => console.log(" Redis ready"))
+    .catch((err) => console.error("Redis connection failed:", err));
 
 // Middlewares
 app.use(cors(corsOptions));
@@ -41,9 +48,9 @@ if (!URI) {
 async function connectDB() {
     try {
         await mongoose.connect(URI);
-        console.log("✅ Connected to MongoDB with Mongoose");
+        console.log("Connected to MongoDB with Mongoose");
     } catch (err) {
-        console.error("❌ MongoDB connection failed:", err.message);
+        console.error("MongoDB connection failed:", err.message);
         process.exit(1);
     }
 }
@@ -54,6 +61,7 @@ app.use("/api/candidate", candidateRoutes);
 app.use("/api/recruiter", recruiterRoutes);
 app.use("/api/recruiter/job", recruiterJobRoutes);
 app.use("/api/recruiter", recruiterApplicationRoutes);
+app.use("/api", require("./routes/testRoutes"));
 
 
 app.use(errorHandler);

@@ -1,5 +1,6 @@
 const Job = require("../models/job");
 const Candidate = require("../models/candidate");
+const JobApplication = require("../models/jobApplication");
 
 // POST /api/recruiter/jobs
 exports.createJob = async (req, res, next) => {
@@ -81,6 +82,27 @@ exports.deleteJob = async (req, res, next) => {
         }
 
         res.json({ message: "Job deleted successfully" });
+    } catch (err) {
+        next(err);
+    }
+};
+
+exports.getJobApplications = async (req, res, next) => {
+    try {
+        const { jobId } = req.params;
+
+        const job = await Job.findOne({ _id: jobId, recruiter: req.user._id });
+        if (!job) {
+            const err = new Error("Job not found or unauthorized");
+            err.statusCode = 404;
+            return next(err);
+        }
+
+        const applications = await JobApplication.find({ job: jobId })
+            .populate("candidate", "fullName skills")
+            .sort({ atsScore: -1, createdAt: -1 }); // sort by ATS score desc
+
+        res.json({ count: applications.length, applications });
     } catch (err) {
         next(err);
     }

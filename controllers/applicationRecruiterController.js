@@ -19,11 +19,13 @@ exports.getJobApplications = async (req, res, next) => {
         const limit = Math.min(parseInt(req.query.limit || "20", 10), 100);
         const skip = (page - 1) * limit;
 
+        const sortParam = req.query.sort === "ats" ? { atsScore: -1 } : { createdAt: -1 };
+
         const [total, applications] = await Promise.all([
             JobApplication.countDocuments({ job: jobId }),
             JobApplication.find({ job: jobId })
             .populate({ path: "candidate", select: "fullName email location skills resumes" })
-            .sort("-createdAt")
+            .sort(sortParam)
             .skip(skip)
             .limit(limit)
         ]);

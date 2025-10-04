@@ -20,7 +20,7 @@ router.delete("/resumes/:resumeKey", candidateController.deleteResume);
 router.get("/feed", candidateController.getCandidateJobs);
 
 // Candidate-only middlewares already used for this router
-router.post("/jobs/:jobId/apply", express.json(), applicationCandidateController.applyToJob);
+router.post("/jobs/:jobId/apply", applicationCandidateController.applyToJob);
 router.get("/applications", applicationCandidateController.getCandidateApplications);
 router.get("/resumes/:resumeKey/url", candidateController.downloadResume);
 

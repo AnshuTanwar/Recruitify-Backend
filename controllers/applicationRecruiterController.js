@@ -1,5 +1,5 @@
 const Job = require("../models/job");
-const JobApplication = require("../models/JobApplication");
+const JobApplication = require("../models/jobApplication");
 const { getPresignedUrl } = require("../utils/s3Helper");
 
 // GET /api/recruiter/jobs/:jobId/applications?page=1&limit=20
@@ -21,20 +21,36 @@ exports.getJobApplications = async (req, res, next) => {
 
         const sortParam = req.query.sort === "ats" ? { atsScore: -1 } : { createdAt: -1 };
 
+        // --- filter logic ---
+        let filter = { job: jobId };
+        if (req.query.status === "pending") {
+            filter.atsScore = null;
+        } else if (req.query.status === "scored") {
+            filter.atsScore = { $ne: null };
+        }
+
         const [total, applications] = await Promise.all([
-            JobApplication.countDocuments({ job: jobId }),
-            JobApplication.find({ job: jobId })
-            .populate({ path: "candidate", select: "fullName email location skills resumes" })
-            .sort(sortParam)
-            .skip(skip)
-            .limit(limit)
+            JobApplication.countDocuments(filter),
+            JobApplication.find(filter)
+                .populate({ path: "candidate", select: "fullName email location skills resumes" })
+                .sort(sortParam)
+                .skip(skip)
+                .limit(limit)
         ]);
 
-        res.json({ total, page, limit, applications });
+        // add atsStatus field
+        const applicationsWithStatus = applications.map(app => ({
+            ...app.toObject(),
+            atsStatus: app.atsScore !== null ? "scored" : "pending"
+        }));
+
+        res.json({ total, page, limit, applications: applicationsWithStatus });
     } catch (err) {
         next(err);
     }
 };
+
+
 
 // PUT /api/recruiter/applications/:applicationId/status
 exports.updateApplicationStatus = async (req, res, next) => {

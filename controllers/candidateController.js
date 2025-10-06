@@ -1,6 +1,9 @@
 const Candidate = require("../models/candidate");
 const User = require("../models/User");
 const { uploadBufferToS3, deleteFromS3, getPresignedUrl } = require("../utils/s3Helper");
+const JobApplication = require("../models/jobApplication");
+const Job = require("../models/job");
+const atsQueue = require("../jobs/atsQueue");
 
 // GET /api/candidate/profile
 exports.getProfile = async (req, res, next) => {
@@ -161,3 +164,37 @@ exports.downloadResume = async (req, res, next) => {
         next(err);
     }
 };
+
+exports.applyToJob = async (req, res) => {
+    try {
+        const { jobId, coverLetter, resumeText } = req.body;
+
+        const job = await Job.findById(jobId);
+        if (!job) return res.status(404).json({ message: "Job not found" });
+
+        const application = await JobApplication.create({
+            candidate: req.user._id,
+            job: jobId,
+            coverLetter,
+            resume: req.body.resume || {}, // if resume uploaded already
+            status: "applied",
+        });
+
+        // push ATS calculation job
+        await atsQueue.add({
+            applicationId: application._id,
+            resumeText,
+            jobSkills: job.requiredSkills,
+        });
+
+        res.status(201).json({
+            message: "Application submitted successfully",
+            applicationId: application._id,
+            atsStatus: "processing", // recruiter will see null until worker updates
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Server error" });
+    }
+};
+

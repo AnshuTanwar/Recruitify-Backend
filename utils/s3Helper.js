@@ -54,8 +54,25 @@ async function getPresignedUrl(key, expiresInSeconds = 900) {
     return getSignedUrl(s3, command, { expiresIn: expiresInSeconds });
 }
 
+// download file from S3 and return Buffer
+async function getFileBufferFromS3(key) {
+    if (!key) throw new Error("S3 key is required");
+
+    const command = new GetObjectCommand({ Bucket: BUCKET, Key: key });
+    const response = await s3.send(command);
+    const stream = response.Body;
+
+  // convert stream -> buffer (works in Node)
+    const chunks = [];
+    for await (const chunk of stream) {
+        chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
+    }
+    return Buffer.concat(chunks);
+}
+
 module.exports = {
     uploadBufferToS3,
     deleteFromS3,
     getPresignedUrl,
+    getFileBufferFromS3
 };

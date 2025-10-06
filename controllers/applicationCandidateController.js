@@ -1,8 +1,12 @@
 const mongoose = require("mongoose");
 const Job = require("../models/job");
 const Candidate = require("../models/candidate");
-const JobApplication = require("../models/JobApplication");
+const JobApplication = require("../models/jobApplication");
+const { getFileBufferFromS3 } = require("../utils/s3Helper");
+const { extractTextFromResume } = require("../utils/resumeParser");
+const { computeATSScore } = require("../utils/atsScorer");
 const sendEmail = require("../utils/sendEmail");
+const atsQueue = require("../jobs/atsQueue");
 
 // POST /api/candidate/jobs/:jobId/apply
 exports.applyToJob = async (req, res, next) => {
@@ -22,7 +26,6 @@ exports.applyToJob = async (req, res, next) => {
             return next(err);
         }
 
-        // ensure candidate exists & has the chosen resume
         const candidate = await Candidate.findById(candidateId).session(session);
         if (!candidate) {
             const err = new Error("Candidate not found");
@@ -40,16 +43,15 @@ exports.applyToJob = async (req, res, next) => {
             return next(err);
         }
 
-        const resumeObj = (candidate.resumes || []).find(r => r.key === resumeKey);
-        if (!resumeObj) {
-            const err = new Error("Selected resume not found in candidate profile");
+        const resumeMeta = (candidate.resumes || []).find((r) => r.key === resumeKey);
+        if (!resumeMeta) {
+            const err = new Error("Selected resume not found in profile");
             err.statusCode = 400;
             await session.abortTransaction();
             session.endSession();
             return next(err);
         }
 
-        // check if already applied
         const existing = await JobApplication.findOne({ candidate: candidateId, job: jobId }).session(session);
         if (existing) {
             const err = new Error("You have already applied to this job");
@@ -59,18 +61,24 @@ exports.applyToJob = async (req, res, next) => {
             return next(err);
         }
 
-        // create application
-        const application = await JobApplication.create([{
-            candidate: candidateId,
-            job: jobId,
-            coverLetter: coverLetter || "",
-            resume: {
-                key: resumeObj.key,
-                originalName: resumeObj.originalName
-            }
-        }], { session });
+        // create application with ATS pending
+        const [application] = await JobApplication.create(
+            [
+                {
+                    candidate: candidateId,
+                    job: jobId,
+                    coverLetter: coverLetter || "",
+                    resume: {
+                        key: resumeMeta.key,
+                        originalName: resumeMeta.originalName,
+                    },
+                    atsScore: null, // initially null
+                },
+            ],
+            { session }
+        );
 
-        // push job to candidate.appliedJobs (if you maintain this)
+        // candidate.appliedJobs update
         candidate.appliedJobs = candidate.appliedJobs || [];
         candidate.appliedJobs.push(jobId);
         await candidate.save({ session });
@@ -78,31 +86,39 @@ exports.applyToJob = async (req, res, next) => {
         await session.commitTransaction();
         session.endSession();
 
-        // Optionally notify recruiter (non-blocking)
-        (async () => {
-        try {
-            const recruiter = job.recruiter;
-            // populate recruiter email
-            const recruiterDoc = await require("../models/recruiter").findById(recruiter).select("email company");
-            if (recruiterDoc && recruiterDoc.email) {
-                await sendEmail({
-                    to: recruiterDoc.email,
-                    subject: `New application for ${job.jobName}`,
-                    text: `${candidate.fullName} has applied for ${job.jobName}.`
-                });
-            }
-        } catch (e) {
-            // swallow notification errors
-            console.error("Notification error:", e.message || e);
-        }
-    })();
+        // 🔥 Push ATS scoring to background queue
+        await atsQueue.add({
+            applicationId: application._id,
+            resumeKey: resumeMeta.key,
+            originalName: resumeMeta.originalName,
+            jobSkills: job.skillsRequired || [],
+        });
 
-        // return created application (first element)
-        res.status(201).json({ message: "Applied successfully", application: application[0] });
+        // optional recruiter notification
+        (async () => {
+            try {
+                const recruiter = job.recruiter;
+                const recruiterDoc = await require("../models/recruiter").findById(recruiter).select("email company");
+                if (recruiterDoc?.email) {
+                    await sendEmail({
+                        to: recruiterDoc.email,
+                        subject: `New application for ${job.jobName}`,
+                        text: `${candidate.fullName} has applied for ${job.jobName}.`
+                    });
+                }
+            } catch (e) {
+                console.error("Notification error:", e.message || e);
+            }
+        })();
+
+        res.status(201).json({
+            message: "Applied successfully",
+            applicationId: application._id,
+            atsStatus: "processing", // recruiter sees processing until worker updates
+        });
     } catch (err) {
         await session.abortTransaction();
         session.endSession();
-        // if duplicate key error (unique index), provide nice message
         if (err.code === 11000) {
             err = new Error("You have already applied to this job");
             err.statusCode = 400;
@@ -111,18 +127,18 @@ exports.applyToJob = async (req, res, next) => {
     }
 };
 
+
 // GET /api/candidate/applications
 exports.getCandidateApplications = async (req, res, next) => {
     try {
         const candidateId = req.user._id;
-        const applications = await JobApplication.find({ candidate: candidateId })
+        const apps = await JobApplication.find({ candidate: candidateId })
         .populate({
             path: "job",
             select: "jobName skillsRequired experienceRequired salary recruiter status"
         })
         .sort("-createdAt");
-
-        res.json(applications);
+        res.json(apps);
     } catch (err) {
         next(err);
     }

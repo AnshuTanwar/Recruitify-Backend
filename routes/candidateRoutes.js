@@ -15,6 +15,7 @@ router.put("/profile", candidateController.updateProfile);
 // resume upload (single file field name "resume")
 router.post("/resumes", upload.single("resume"), candidateController.uploadResume);
 router.delete("/resumes/:resumeKey", candidateController.deleteResume);
+router.get("/resumes/:resumeKey/url", candidateController.getResumeUrl);
 
 //feed
 router.get("/feed", candidateController.getCandidateJobs);

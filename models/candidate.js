@@ -9,6 +9,8 @@ const candidateSchema = new mongoose.Schema({
     skills: [{ type: String, index: true }],
     resumes: [
         {
+            key: String,
+            originalName: String,
             url: String,
             uploadedAt: { type: Date, default: Date.now }
         }

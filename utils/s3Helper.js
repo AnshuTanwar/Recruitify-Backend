@@ -29,7 +29,10 @@ async function uploadBufferToS3(buffer, contentType, originalName, userId) {
 
     await s3.send(command);
 
-    return { key };
+    const url = `https://${process.env.S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+
+
+    return { key, url };
 }
 
 // Delete resume by key
@@ -58,7 +61,7 @@ async function getPresignedUrl(key, expiresInSeconds = 900) {
 async function getFileBufferFromS3(key) {
     if (!key) throw new Error("S3 key is required");
 
-    const command = new GetObjectCommand({ Bucket: BUCKET, Key: key });
+    const command = new GetObjectCommand({ Bucket: process.env.S3_BUCKET, Key: key });
     const response = await s3.send(command);
     const stream = response.Body;
 

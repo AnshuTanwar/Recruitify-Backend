@@ -66,7 +66,7 @@ exports.uploadResume = async (req, res, next) => {
         }
 
         // upload to s3
-        const { key } = await uploadBufferToS3(
+        const { key, url } = await uploadBufferToS3(
             req.file.buffer,
             req.file.mimetype,
             req.file.originalname,
@@ -75,6 +75,7 @@ exports.uploadResume = async (req, res, next) => {
 
         const resumeObj = {
             key,
+            url,
             originalName: req.file.originalname,
             uploadedAt: new Date()
         };
@@ -92,7 +93,7 @@ exports.uploadResume = async (req, res, next) => {
 // DELETE /api/candidate/resumes/:resumeKey  (resumeKey = key or id — we'll use key)
 exports.deleteResume = async (req, res, next) => {
     try {
-        const { resumeKey } = req.params;
+        const resumeKey = decodeURIComponent(req.params.resumeKey);
         const candidate = await Candidate.findById(req.user._id);
         if (!candidate) {
             const error = new Error("Candidate not found");
@@ -114,6 +115,39 @@ exports.deleteResume = async (req, res, next) => {
         await deleteFromS3(removed.key);
 
         res.json({ message: "Resume deleted" });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// GET /api/candidate/resumes/:resumeKey/url
+exports.getResumeUrl = async (req, res, next) => {
+    try {
+        const candidate = await Candidate.findById(req.user._id);
+        if (!candidate) {
+            const err = new Error("Candidate not found");
+            err.statusCode = 404;
+            return next(err);
+        }
+
+        const resumeKey = decodeURIComponent(req.params.resumeKey);
+
+        // find resume
+        const resume = (candidate.resumes || []).find(r => r.key === resumeKey);
+        if (!resume) {
+            const err = new Error("Resume not found in your profile");
+            err.statusCode = 404;
+            return next(err);
+        }
+
+        // generate presigned URL (valid 10 minutes)
+        const presignedUrl = await getPresignedUrl(resume.key, 600);
+
+        res.json({
+            url: presignedUrl,
+            expiresIn: 600,
+            originalName: resume.originalName
+        });
     } catch (err) {
         next(err);
     }

@@ -1,74 +1,105 @@
-# Recruitify Backend
+# Recruitify
 
-Recruitify is a **web-based hiring platform** built using the MERN stack. This repository contains the backend code that powers the platform's core functionalities including user management, job postings, resume parsing, candidate filtering, and AI-powered assistance.
+Recruitify is a modern web-based job portal built for efficiency and simplicity. It empowers recruiters to automate candidate screening and enables candidates to showcase their profiles with ease. Featuring intelligent resume parsing and skill-matched feeds, Recruitify helps reduce downtime and streamlines job discovery for both recruiters and job seekers.
 
-## Features
+## 🚀 Features
 
-### Admin
-- Manage users (recruiters and candidates)
-- View platform analytics
-- Handle scam or reported recruiters
+- **Automatic Resume Parsing & ATS Sorting**  
+  Candidates' resumes are auto-parsed and sorted based on advanced ATS (Applicant Tracking System) algorithms, letting recruiters focus on the best-fit profiles instantly.
 
-### Candidate
-- Create and manage profiles
-- Upload resumes
-- Explore and apply for jobs
-- Interact with an AI-powered ATS chatbot for resume scoring and improvement suggestions
+- **Skill-Based Feed Filtering**  
+  Candidates only see jobs that precisely match the skills they possess, eliminating irrelevant listings and doom scrolling.
 
-### Recruiter
-- Create and manage job postings
-- Filter candidates using advanced search and matching
-- Send job alerts to eligible candidates
-- Chat with shortlisted candidates
+- **Secure Resume Storage**  
+  Candidates can upload and manage PDFs of their resumes securely. Recruiters can fetch resumes for screening and download as needed.
 
-## Tech Stack
-- **Node.js** with **Express.js** (server-side)
-- **MongoDB** with Mongoose (database)
-- **JWT** for authentication & authorization
-- **Socket.io** (for chat feature)
-- **AI/ML Integration** (ATS scoring bot and resume suggestions)
+- **Role-Based Dashboards**  
+  Separate dashboards for recruiters and candidates, ensuring specialized workflows and seamless experiences.
 
-## Getting Started
+- **Google OAuth & JWT Authentication**  
+  Secure sign-in options with Google OAuth, refresh tokens for session management, and robust password reset flows.
 
-### Prerequisites
-Make sure you have installed:
-- Node.js (>= 16.x)
-- MongoDB
-- npm
+- **Real-Time Application Status**  
+  Both candidates and recruiters get live updates on application statuses, feedback, and onboarding next steps.
 
-### Installation
-1. Clone the repository:
-   ```
-   git clone https://github.com/AnshuTanwar/Recruitify-Backend
-   cd recruitify-backend
-   ```
+## 🗂️ Tech Stack
 
-2. Install dependencies:
-   ```
-   npm install
-   ```
+- **Frontend:** React.js (Vite), Tailwind CSS
+- **Backend:** Node.js, Express.js
+- **Database:** MongoDB (Mongoose ORM)
+- **Authentication:** Passport.js (Google OAuth, JWT)
+- **Cloud & Storage:** AWS S3 (for resume PDFs)
+- **Caching & Queue:** Redis (ATS scoring tasks)
+- **Deployment:** Vercel (Frontend), Render (Backend)
 
-3. Set up environment variables by creating a `.env` file in the root directory:
-   ```
-   PORT=5000
-   MONGO_URI=your_mongodb_uri
-   JWT_SECRET=your_secret_key
-   ```
+## 🔄 Core Architecture
 
-4. Start the development server:
-   ```
-   npm start
-   ```
+- **Decoupled Frontend & Backend**  
+  The frontend (React) and backend (Node/Express) are developed and deployed in separate repositories for flexibility and scalability.
+
+- **Redis Queue**  
+  ATS-related compute tasks are processed asynchronously through Redis for fast sorting and ranking.
+
+- **RESTful API Design**  
+  Organized endpoints for `auth`, `candidate`, `recruiter`, `job`, and `application` with granular role-based access.
+
+## 📝 Candidate Experience
+
+- Sign up, create profile, and upload resume (PDF).
+- Auto-matching with skill-relevant jobs—no irrelevant postings.
+- Track applications, update status, and communicate securely.
+
+## 💼 Recruiter Experience
+
+- Create and manage job posts with skill requirements.
+- Instantly view and sort applicants by ATS score (from parsed resumes).
+- Filter, update application statuses, and download resumes.
+
+## 🌐 Demo Links
+
+- **Frontend:** [https://recruitify-pi.vercel.app](https://recruitify-pi.vercel.app)
+- **Backend:** See link below.
+
+## 📦 Backend Repository
+
+Recruitify’s backend is maintained as a separate repository.
+**[👉 View the Recruitify Backend Repo](https://github.com/AnshuTanwar/Recruitify-Backend)**
+
+## 🛠️ Local Setup
+
+### Setup Instructions
+
+```bash
+# Clone the frontend
+git clone https://github.com/AnshuTanwar/Recruitify
+
+# Install dependencies
+cd recruitify-frontend
+npm install
+
+# Start development server
+npm run dev
 
 
-## Roadmap
-- [ ] User Authentication (JWT + Role-based access)
-- [ ] Admin panel APIs
-- [ ] Candidate resume upload & parsing
-- [ ] Recruiter job posting & filtering APIs
-- [ ] Chat system with Socket.io
-- [ ] AI chatbot integration for ATS scoring
+**Backend Setup:**  
+Clone and configure the backend as per instructions in [the main backend README](https://github.com/AnshuTanwar/Recruitify-Backend).
 
-## License
-This project is licensed under the **Apache License**.
-```
+
+## 📚 API Reference
+
+- `POST /api/auth/signup` — Candidate/Recruiter Registration
+- `POST /api/auth/login` — Email/Password Sign-In
+- `GET /api/auth/google` — Google OAuth
+- `POST /api/candidate/resumes` — Resume upload (PDF)
+- `GET /api/candidate/feed` — Skill-matched job feed
+- `POST /api/recruiter/job` — Create job post with required skills
+- `GET /api/recruiter/job/:id/applications` — ATS-sorted applicant view
+
+_For complete API routes and usage, check the backend repo documentation._
+
+## 📢 Status
+
+Recruitify is actively being developed. New features and improvements roll out regularly—  
+**Contributions, feedback, and suggestions are welcome!**
+
+---

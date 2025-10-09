@@ -1,6 +1,6 @@
 const passport = require("passport");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
-const User = require("../models/User");
+const User = require("../models/User.js");
 const Candidate = require("../models/candidate.js");
 const Recruiter = require("../models/recruiter.js");
 

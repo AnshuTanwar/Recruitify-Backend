@@ -23,6 +23,5 @@ router.get("/feed", candidateController.getCandidateJobs);
 // Candidate-only middlewares already used for this router
 router.post("/jobs/:jobId/apply", applicationCandidateController.applyToJob);
 router.get("/applications", applicationCandidateController.getCandidateApplications);
-router.get("/resumes/:resumeKey/url", candidateController.downloadResume);
 
 module.exports = router;

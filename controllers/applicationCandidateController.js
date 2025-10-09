@@ -2,9 +2,6 @@ const mongoose = require("mongoose");
 const Job = require("../models/job");
 const Candidate = require("../models/candidate");
 const JobApplication = require("../models/jobApplication");
-const { getFileBufferFromS3 } = require("../utils/s3Helper");
-const { extractTextFromResume } = require("../utils/resumeParser");
-const { computeATSScore } = require("../utils/atsScorer");
 const sendEmail = require("../utils/sendEmail");
 const atsQueue = require("../jobs/atsQueue");
 

@@ -174,31 +174,6 @@ exports.getCandidateJobs = async (req, res, next) => {
     }
 };
 
-// GET /api/candidate/resumes/:resumeKey/url
-exports.downloadResume = async (req, res, next) => {
-    try {
-        const candidate = await Candidate.findById(req.user._id);
-        if (!candidate) {
-            const err = new Error("Candidate not found");
-            err.statusCode = 404;
-            return next(err);
-        }
-
-        const { resumeKey } = req.params;
-        const resume = (candidate.resumes || []).find(r => r.key === resumeKey);
-        if (!resume) {
-            const err = new Error("Resume not found");
-            err.statusCode = 404;
-            return next(err);
-        }
-
-        const url = await getPresignedUrl(resume.key, 900);
-        res.json({ url, expiresIn: 900 });
-    } catch (err) {
-        next(err);
-    }
-};
-
 exports.applyToJob = async (req, res) => {
     try {
         const { jobId, coverLetter, resumeText } = req.body;

@@ -207,3 +207,45 @@ exports.applyToJob = async (req, res) => {
     }
 };
 
+// GET /api/candidate/jobs/:jobId
+exports.getJobDetails = async (req, res, next) => {
+    try {
+        const { jobId } = req.params;
+
+        // find job and recruiter details
+        const job = await Job.findById(jobId)
+        .populate("recruiter", "fullName company email location about");
+
+        if (!job || job.status !== "open") {
+            const err = new Error("Job not found or no longer open");
+            err.statusCode = 404;
+            return next(err);
+        }
+
+        res.json({
+            job: {
+                id: job._id,
+                jobName: job.jobName,
+                description: job.description,
+                skillsRequired: job.skillsRequired,
+                experienceRequired: job.experienceRequired,
+                salary: job.salary,
+                type: job.type,
+                status: job.status,
+                createdAt: job.createdAt,
+                recruiter: job.recruiter
+                    ? {
+                        id: job.recruiter._id,
+                        name: job.recruiter.fullName,
+                        company: job.recruiter.company,
+                        email: job.recruiter.email,
+                        location: job.recruiter.location || null,
+                        about: job.recruiter.about || null,
+                    }
+                : null,
+            },
+        });
+    } catch (err) {
+        next(err);
+    }
+};

@@ -12,7 +12,7 @@ exports.applyToJob = async (req, res, next) => {
     try {
         const candidateId = req.user._id;
         const { jobId } = req.params;
-        const { resumeKey, coverLetter } = req.body;
+        const { resumeKey } = req.body;
 
         const job = await Job.findById(jobId).session(session);
         if (!job || job.status !== "open") {
@@ -64,7 +64,6 @@ exports.applyToJob = async (req, res, next) => {
                 {
                     candidate: candidateId,
                     job: jobId,
-                    coverLetter: coverLetter || "",
                     resume: {
                         key: resumeMeta.key,
                         originalName: resumeMeta.originalName,
@@ -111,7 +110,7 @@ exports.applyToJob = async (req, res, next) => {
         res.status(201).json({
             message: "Applied successfully",
             applicationId: application._id,
-            atsStatus: "processing", // recruiter sees processing until worker updates
+            atsStatus: "processing",
         });
     } catch (err) {
         await session.abortTransaction();

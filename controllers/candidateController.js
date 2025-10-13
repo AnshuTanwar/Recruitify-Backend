@@ -174,39 +174,6 @@ exports.getCandidateJobs = async (req, res, next) => {
     }
 };
 
-exports.applyToJob = async (req, res) => {
-    try {
-        const { jobId, coverLetter, resumeText } = req.body;
-
-        const job = await Job.findById(jobId);
-        if (!job) return res.status(404).json({ message: "Job not found" });
-
-        const application = await JobApplication.create({
-            candidate: req.user._id,
-            job: jobId,
-            coverLetter,
-            resume: req.body.resume || {}, // if resume uploaded already
-            status: "applied",
-        });
-
-        // push ATS calculation job
-        await atsQueue.add({
-            applicationId: application._id,
-            resumeText,
-            jobSkills: job.requiredSkills,
-        });
-
-        res.status(201).json({
-            message: "Application submitted successfully",
-            applicationId: application._id,
-            atsStatus: "processing", // recruiter will see null until worker updates
-        });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: "Server error" });
-    }
-};
-
 // GET /api/candidate/jobs/:jobId
 exports.getJobDetails = async (req, res, next) => {
     try {
@@ -244,6 +211,43 @@ exports.getJobDetails = async (req, res, next) => {
                     }
                 : null,
             },
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// GET /api/candidate/jobs/:jobId/status
+exports.getJobApplicationStatus = async (req, res, next) => {
+    try {
+        const { jobId } = req.params;
+        const candidateId = req.user._id;
+
+        // Check if job exists and open
+        const job = await Job.findById(jobId).select("status");
+        if (!job || job.status !== "open") {
+            const err = new Error("Job not found or closed");
+            err.statusCode = 404;
+            return next(err);
+        }
+
+        // Check if candidate has already applied
+        const existingApplication = await JobApplication.findOne({
+            job: jobId,
+            candidate: candidateId,
+        }).select("_id status atsScore createdAt");
+
+        res.json({
+            jobId,
+            hasApplied: !!existingApplication,
+            application: existingApplication
+            ? {
+                id: existingApplication._id,
+                status: existingApplication.status,
+                atsScore: existingApplication.atsScore,
+                appliedAt: existingApplication.createdAt,
+            }
+            : null,
         });
     } catch (err) {
         next(err);

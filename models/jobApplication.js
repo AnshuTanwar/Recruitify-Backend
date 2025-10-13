@@ -12,8 +12,6 @@ const JobApplicationSchema = new Schema(
             default: "applied",
         },
 
-        coverLetter: { type: String },
-
         resume: {
             url: { type: String },
             key: { type: String },

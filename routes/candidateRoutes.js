@@ -24,5 +24,7 @@ router.get("/feed", candidateController.getCandidateJobs);
 router.post("/jobs/:jobId/apply", applicationCandidateController.applyToJob);
 router.get("/applications", applicationCandidateController.getCandidateApplications);
 router.get("/jobs/:jobId", candidateController.getJobDetails);
+router.get("/jobs/:jobId/status", authCandidate, candidateController.getJobApplicationStatus);
+
 
 module.exports = router;

@@ -12,8 +12,9 @@ const authRoutes = require("./routes/authRoutes");
 const candidateRoutes = require("./routes/candidateRoutes");
 const recruiterRoutes = require("./routes/recruiterRoutes");
 const recruiterJobRoutes = require("./routes/recruiterJobRoutes");
-const recruiterApplicationRoutes = require("./routes/recruiterApplicationRoutes")
+const recruiterApplicationRoutes = require("./routes/recruiterApplicationRoutes");
 const errorHandler = require("./middlewares/errorHandler");
+const reportRoutes = require("./routes/reportRoutes");
 
 const app = express();
 
@@ -63,6 +64,7 @@ app.use("/api/recruiter", recruiterRoutes);
 app.use("/api/recruiter/job", recruiterJobRoutes);
 app.use("/api/recruiter", recruiterApplicationRoutes);
 app.use("/api", require("./routes/testRoutes"));
+app.use("/api/candidate", reportRoutes);
 
 
 app.use(errorHandler);

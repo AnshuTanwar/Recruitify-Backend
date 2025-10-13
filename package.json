@@ -17,7 +17,8 @@
   "scripts": {
     "start": "nodemon server.js",
     "production": "node server.js",
-    "test": "jest --runInBand"
+    "test": "jest --runInBand",
+    "seed:admin": "node seedAdmin.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.896.0",

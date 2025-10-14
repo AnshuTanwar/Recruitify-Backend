@@ -1,6 +1,7 @@
 const AnalyticsLog = require("../models/analyticsLog");
 const User = require("../models/User");
 const Job = require("../models/job");
+const Report = require("../models/report");
 
 exports.getSummary = async (req, res, next) => {
     try {
@@ -41,6 +42,56 @@ exports.getTrends = async (req, res, next) => {
 
         const trendData = await AnalyticsLog.aggregate(pipeline);
         res.json(trendData);
+    } catch (err) {
+        next(err);
+    }
+};
+
+// GET /api/admin/analytics/overview
+exports.getOverview = async (req, res, next) => {
+    try {
+        const [recruiters, candidates, jobs, reports] = await Promise.all([
+            User.countDocuments({ role: "Recruiter" }),
+            User.countDocuments({ role: "Candidate" }),
+            Job.countDocuments(),
+            Report.countDocuments(),
+        ]);
+
+        res.json({
+            summary: {
+                totalRecruiters: recruiters,
+                totalCandidates: candidates,
+                totalJobs: jobs,
+                totalReports: reports,
+            },
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// GET /api/admin/analytics/recent-actions?page=1&limit=10
+exports.getRecentActions = async (req, res, next) => {
+    try {
+        const page = parseInt(req.query.page || "1");
+        const limit = parseInt(req.query.limit || "10");
+        const skip = (page - 1) * limit;
+
+        const [total, logs] = await Promise.all([
+            AnalyticsLog.countDocuments(),
+            AnalyticsLog.find()
+                .populate("user", "fullName email role")
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit),
+        ]);
+
+        res.json({
+            total,
+            page,
+            limit,
+            logs,
+        });
     } catch (err) {
         next(err);
     }

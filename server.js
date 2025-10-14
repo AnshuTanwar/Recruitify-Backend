@@ -21,14 +21,14 @@ const adminAnalyticsRoutes = require("./routes/adminAnalyticsRoutes");
 const app = express();
 
 const corsOptions = {
-    origin: ['http://localhost:5173', 'https://recruitify-pi.vercel.app'],
+    origin: ['http://localhost:5173'],
     credentials: true,
     optionsSuccessStatus: 200,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
     preflightContinue: false
 };
-//demo
+
 // connect Redis at startup
 connectRedis()
     .then(() => console.log(" Redis ready"))

@@ -54,12 +54,13 @@ function expandSkills(jobSkills) {
     const expanded = new Set();
 
     for (let skill of jobSkills) {
-        skill = skill.toLowerCase();
+        skill = (skill || "").toLowerCase().trim();
+        if (!skill) continue;
         expanded.add(skill);
 
         // Add synonyms if exist
         for (const [base, syns] of Object.entries(SKILL_SYNONYMS)) {
-            if (skill.includes(base) || syns.includes(skill)) {
+            if (skill.includes(base) || syns.some(s => skill.includes(s) || s.includes(skill))) {
                 expanded.add(base);
                 syns.forEach(s => expanded.add(s));
             }

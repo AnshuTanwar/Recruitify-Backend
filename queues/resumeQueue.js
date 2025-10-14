@@ -1,11 +1,8 @@
 const Queue = require("bull");
+const { redisConfig } = require("../config/redis");
 
 const resumeQueue = new Queue("resume-processing", {
-    redis: {
-        host: process.env.REDIS_HOST,
-        port: process.env.REDIS_PORT,
-        password: process.env.REDIS_PASSWORD,
-    },
+    redis: redisConfig,
 });
 
 resumeQueue.on("ready", () => {
@@ -15,5 +12,10 @@ resumeQueue.on("ready", () => {
 resumeQueue.on("error", (err) => {
     console.error(" Queue Error:", err);
 });
+
+resumeQueue.on("failed", (job, err) => {
+    console.error(`Resume job ${job.id} failed:`, err);
+});
+
 
 module.exports = resumeQueue;

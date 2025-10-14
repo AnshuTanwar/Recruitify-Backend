@@ -8,5 +8,7 @@ router.use(protect, authorizeRoles("Admin"));
 
 router.get("/analytics/summary", controller.getSummary);
 router.get("/analytics/trends", controller.getTrends);
+router.get("/overview", controller.getOverview);
+router.get("/recent-actions", controller.getRecentActions);
 
 module.exports = router;

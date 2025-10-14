@@ -1,5 +1,6 @@
 const Recruiter = require("../models/recruiter");
 const User = require("../models/User");
+const { logAction } = require("../utils/analyticsLogger");
 
 // GET /api/recruiter/profile
 exports.getProfile = async (req, res, next) => {
@@ -10,6 +11,7 @@ exports.getProfile = async (req, res, next) => {
             err.statusCode = 404;
             return next(err);
         }
+        logAction("recruiter_profile_view", req.user._id, { endpoint: "/api/recruiter/profile" });
         res.json(recruiter);
     } catch (err) {
         next(err);
@@ -31,6 +33,7 @@ exports.updateProfile = async (req, res, next) => {
         }
 
         const recruiter = await Recruiter.findByIdAndUpdate(req.user._id, updates, { new: true }).select("-password");
+        logAction("recruiter_profile_update", req.user._id, { updatedFields: Object.keys(updates), endpoint: "/api/recruiter/profile" });
         res.json(recruiter);
     } catch (err) {
         next(err);

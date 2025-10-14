@@ -15,6 +15,8 @@ const recruiterJobRoutes = require("./routes/recruiterJobRoutes");
 const recruiterApplicationRoutes = require("./routes/recruiterApplicationRoutes");
 const errorHandler = require("./middlewares/errorHandler");
 const reportRoutes = require("./routes/reportRoutes");
+const adminReportRoutes = require("./routes/adminReportRoutes");
+const adminAnalyticsRoutes = require("./routes/adminAnalyticsRoutes");
 
 const app = express();
 
@@ -65,6 +67,8 @@ app.use("/api/recruiter/job", recruiterJobRoutes);
 app.use("/api/recruiter", recruiterApplicationRoutes);
 app.use("/api", require("./routes/testRoutes"));
 app.use("/api/candidate", reportRoutes);
+app.use("/api/admin", adminReportRoutes);
+app.use("/api/admin", adminAnalyticsRoutes);
 
 
 app.use(errorHandler);

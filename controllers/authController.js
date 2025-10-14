@@ -5,6 +5,7 @@ const User = require("../models/User");
 const Candidate = require("../models/candidate");
 const Recruiter = require("../models/recruiter");
 const PasswordResetToken = require("../models/PasswordResetToken");
+const { logAction } = require("../utils/analyticsLogger");
 const sendEmail = require("../utils/sendEmail");
 const {
     generateAccessToken,
@@ -74,6 +75,8 @@ exports.signup = async (req, res, next) => {
         user.refreshTokens.push(refreshToken);
         await user.save();
 
+        await logAction("user_signup", user._id, { role: user.role, email: user.email });
+
         res.cookie("refreshToken", refreshToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
@@ -112,6 +115,8 @@ exports.login = async (req, res, next) => {
         user.refreshTokens.push(refreshToken);
         await user.save();
 
+        await logAction("user_login", user._id, { role: user.role, email: user.email });
+
         res.cookie("refreshToken", refreshToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
@@ -135,6 +140,8 @@ exports.googleCallback = async (req, res, next) => {
 
         user.refreshTokens.push(refreshToken);
         await user.save();
+
+        await logAction("user_google_login", user._id, { email: user.email, role: user.role });
 
         res.cookie("refreshToken", refreshToken, {
             httpOnly: true,
@@ -189,6 +196,8 @@ exports.logout = async (req, res, next) => {
             if (user) {
                 user.refreshTokens = user.refreshTokens.filter(t => t !== refreshToken);
                 await user.save();
+
+                await logAction("user_logout", user._id, { email: user.email });
             }
         } catch (err) {
             // logout ke time error ko silently handle kar sakte

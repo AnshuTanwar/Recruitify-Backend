@@ -4,6 +4,7 @@ const Candidate = require("../models/candidate");
 const JobApplication = require("../models/jobApplication");
 const sendEmail = require("../utils/sendEmail");
 const atsQueue = require("../jobs/atsQueue");
+const { logAction } = require("../utils/analyticsLogger");
 
 // POST /api/candidate/jobs/:jobId/apply
 exports.applyToJob = async (req, res, next) => {
@@ -82,7 +83,7 @@ exports.applyToJob = async (req, res, next) => {
         await session.commitTransaction();
         session.endSession();
 
-        // 🔥 Push ATS scoring to background queue
+        // Push ATS scoring to background queue
         await atsQueue.add({
             applicationId: application._id,
             resumeKey: resumeMeta.key,
@@ -90,7 +91,13 @@ exports.applyToJob = async (req, res, next) => {
             jobSkills: job.skillsRequired || [],
         });
 
-        // optional recruiter notification
+        await logAction("candidate_apply_job", candidateId, {
+            jobId,
+            jobTitle: job.jobName,
+            recruiter: job.recruiter,
+        });
+
+        // recruiter notification
         (async () => {
             try {
                 const recruiter = job.recruiter;
@@ -134,6 +141,11 @@ exports.getCandidateApplications = async (req, res, next) => {
             select: "jobName skillsRequired experienceRequired salary recruiter status"
         })
         .sort("-createdAt");
+
+        await logAction("candidate_view_applications", candidateId, {
+            totalApplications: apps.length,
+        });
+        
         res.json(apps);
     } catch (err) {
         next(err);

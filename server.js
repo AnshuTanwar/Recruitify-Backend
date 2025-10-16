@@ -63,7 +63,7 @@ async function connectDB() {
 app.use("/api/auth", authRoutes);
 app.use("/api/candidate", candidateRoutes);
 app.use("/api/recruiter", recruiterRoutes);
-app.use("/api/recruiter/job", recruiterJobRoutes);
+app.use("/api/recruiter/jobs", recruiterJobRoutes);
 app.use("/api/recruiter", recruiterApplicationRoutes);
 app.use("/api", require("./routes/testRoutes"));
 app.use("/api/candidate", reportRoutes);

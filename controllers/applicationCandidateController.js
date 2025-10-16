@@ -138,7 +138,7 @@ exports.getCandidateApplications = async (req, res, next) => {
         const apps = await JobApplication.find({ candidate: candidateId })
         .populate({
             path: "job",
-            select: "jobName skillsRequired experienceRequired salary recruiter status"
+            select: "jobName skillsRequired experienceLevel salary recruiter status"
         })
         .sort("-createdAt");
 

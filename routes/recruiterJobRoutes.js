@@ -11,6 +11,7 @@ router.use(protect, authorizeRoles("Recruiter"));
 // Recruiter-only routes
 router.post("/", recruiterJobController.createJob);
 router.get("/", recruiterJobController.getRecruiterJobs);
+router.get("/applications", recruiterJobController.getAllRecruiterApplications); // Must be before /:id routes
 router.put("/:id", recruiterJobController.updateJob);
 router.delete("/:id", recruiterJobController.deleteJob);
 router.get("/:id/applications", recruiterJobController.getJobApplications);

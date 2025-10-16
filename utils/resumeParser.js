@@ -19,4 +19,28 @@ async function parseResumeText(resumeUrl) {
     }
 }
 
-module.exports = { parseResumeText };
+/**
+ * Extract text from resume buffer (for ATS processing)
+ */
+async function extractTextFromResume(buffer, originalName = "") {
+    try {
+        // Determine file type from originalName or assume PDF
+        const isPDF = originalName.toLowerCase().endsWith('.pdf') || !originalName;
+        
+        if (isPDF) {
+            // Parse PDF buffer directly
+            const data = await pdfParse(buffer);
+            return data.text || "";
+        } else {
+            // For non-PDF files, we could add DOCX parsing here
+            // For now, return empty string for unsupported formats
+            console.warn(`Unsupported file format for resume parsing: ${originalName}`);
+            return "";
+        }
+    } catch (err) {
+        console.error("Resume text extraction failed:", err.message);
+        return "";
+    }
+}
+
+module.exports = { parseResumeText, extractTextFromResume };

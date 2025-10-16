@@ -30,6 +30,10 @@ atsQueue.process(async (job) => {
 
         // 2) extract text from resume buffer (resumeParser must accept buffer)
         const resumeText = await extractTextFromResume(buffer, originalName || "");
+        
+        if (!resumeText || resumeText.trim().length === 0) {
+            console.warn(`No text extracted from resume for application ${applicationId}`);
+        }
 
         // 3) compute score
         const atsScore = computeATSScoreV2(resumeText, jobSkills || []);

@@ -180,8 +180,10 @@ exports.getJobDetails = async (req, res, next) => {
         const { jobId } = req.params;
 
         // find job and recruiter details
-        const job = await Job.findById(jobId)
-        .populate("recruiter", "fullName company email location about");
+        const job = await Job.findById(jobId).populate(
+            "recruiter",
+            "fullName company email location about"
+        );
 
         if (!job || job.status !== "open") {
             const err = new Error("Job not found or no longer open");
@@ -193,29 +195,42 @@ exports.getJobDetails = async (req, res, next) => {
             job: {
                 id: job._id,
                 jobName: job.jobName,
+                companyName: job.companyName,
+                location: job.location,
+                type: job.type,
                 description: job.description,
                 skillsRequired: job.skillsRequired,
-                experienceRequired: job.experienceRequired,
-                salary: job.salary,
-                type: job.type,
+                requirements: job.requirements,
+                benefits: job.benefits,
+                experienceLevel: job.experienceLevel,
+                education: job.education,
+                applicationDeadline: job.applicationDeadline,
+                salary: {
+                    min: job.salary?.min,
+                    max: job.salary?.max,
+                    period: job.salary?.period,
+                    currency: job.salary?.currency,
+                },
                 status: job.status,
                 createdAt: job.createdAt,
+                updatedAt: job.updatedAt,
                 recruiter: job.recruiter
-                    ? {
-                        id: job.recruiter._id,
-                        name: job.recruiter.fullName,
-                        company: job.recruiter.company,
-                        email: job.recruiter.email,
-                        location: job.recruiter.location || null,
-                        about: job.recruiter.about || null,
-                    }
-                : null,
+                    ?   {
+                            id: job.recruiter._id,
+                            name: job.recruiter.fullName,
+                            company: job.recruiter.company,
+                            email: job.recruiter.email,
+                            location: job.recruiter.location || null,
+                            about: job.recruiter.about || null,
+                        }
+                    : null,
             },
         });
     } catch (err) {
         next(err);
     }
 };
+
 
 // GET /api/candidate/jobs/:jobId/status
 exports.getJobApplicationStatus = async (req, res, next) => {

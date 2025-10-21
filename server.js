@@ -5,18 +5,25 @@ const { connectRedis } = require("./config/redis");
 const cookieParser = require("cookie-parser");
 const passport = require("passport");
 const cors = require("cors");
-require("./config/passport");
+const http = require("http");
+const { Server } = require("socket.io");
 
+require("./config/passport");
 require("./jobs/atsQueue");
+
 const authRoutes = require("./routes/authRoutes");
 const candidateRoutes = require("./routes/candidateRoutes");
 const recruiterRoutes = require("./routes/recruiterRoutes");
 const recruiterJobRoutes = require("./routes/recruiterJobRoutes");
 const recruiterApplicationRoutes = require("./routes/recruiterApplicationRoutes");
-const errorHandler = require("./middlewares/errorHandler");
 const reportRoutes = require("./routes/reportRoutes");
 const adminReportRoutes = require("./routes/adminReportRoutes");
 const adminAnalyticsRoutes = require("./routes/adminAnalyticsRoutes");
+const chatRoutes = require('./routes/chatRoutes');
+const chatAssistantRoutes = require("./routes/chatAssistantRoutes");
+
+const errorHandler = require("./middlewares/errorHandler");
+const { protectSocket } = require("./middlewares/socketAuth");
 
 const app = express();
 
@@ -39,6 +46,22 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser());
 app.use(passport.initialize());
+
+
+// HTTP + Socket.IO
+const server = http.createServer(app);
+const io = new Server(server, {
+    cors: {
+        origin: ["http://localhost:5173"],
+        credentials: true,
+    },
+});
+
+// Authenticate sockets
+io.use(protectSocket);
+
+// Import socket logic
+require("./sockets/chatSocket")(io);
 
 // Config
 const PORT = process.env.PORT || 5050;
@@ -69,6 +92,8 @@ app.use("/api", require("./routes/testRoutes"));
 app.use("/api/candidate", reportRoutes);
 app.use("/api/admin", adminReportRoutes);
 app.use("/api/admin", adminAnalyticsRoutes);
+app.use("/api/chat", chatRoutes);
+app.use("/api/chat", chatAssistantRoutes);
 
 
 app.use(errorHandler);

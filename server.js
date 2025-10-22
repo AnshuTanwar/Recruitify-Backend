@@ -21,6 +21,7 @@ const adminReportRoutes = require("./routes/adminReportRoutes");
 const adminAnalyticsRoutes = require("./routes/adminAnalyticsRoutes");
 const chatRoutes = require('./routes/chatRoutes');
 const chatAssistantRoutes = require("./routes/chatAssistantRoutes");
+const chatSmartReplyRoutes = require("./routes/chatSmartReplyRoutes");
 
 const errorHandler = require("./middlewares/errorHandler");
 const { protectSocket } = require("./middlewares/socketAuth");
@@ -94,7 +95,7 @@ app.use("/api/admin", adminReportRoutes);
 app.use("/api/admin", adminAnalyticsRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/chat", chatAssistantRoutes);
-
+app.use("/api/chat", chatSmartReplyRoutes);
 
 app.use(errorHandler);
 

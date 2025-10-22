@@ -78,12 +78,12 @@ ${resumeText}
 
 Classify the message:
 - If it is a general or conversational question (like availability, expectations, or experience summary),
-  suggest ${numReplies} short, polite, human-like replies based on the resume context.
+    suggest ${numReplies} short, polite, human-like replies based on the resume context.
 
 - If it looks like a technical or knowledge-testing question (e.g., "Explain", "Difference between", "How does", "What is"),
-  DO NOT generate any answer.
-  Instead, respond with a single JSON like:
-  { "ethicalWarning": "This seems like a technical test question — the candidate should answer in their own words." }
+    DO NOT generate any answer.
+    Instead, respond with a single JSON like:
+    { "ethicalWarning": "This seems like a technical test question — the candidate should answer in their own words." }
 
 Return JSON only.
 
@@ -136,7 +136,72 @@ If general:
     return ["Could you clarify your message?"];
 }
 
+/* ------------------------------------------------------
+    Candidate-Side Resume Analyzer (Deep ATS Review)
+------------------------------------------------------ */
+async function analyzeResumeWithGemini({ resumeText, jobTitle, jobDescription }) {
+    const prompt = `
+You are an AI Resume Analyst.
+Evaluate the following resume for the job title "${jobTitle}" 
+and the job description below.
+
+Job Description:
+${jobDescription}
+
+Resume Text:
+${resumeText}
+
+Provide an objective, concise JSON review with these fields:
+{
+    "atsScore": number (0–100),
+    "summary": string,
+    "strengths": [string],
+    "weaknesses": [string],
+    "suggestedImprovements": [string],
+    "missingSkills": [string],
+    "tone": string,
+    "cultureFit": string,
+    "layoutIssues": [string]
+}
+Guidelines:
+- Be factual, not overly flattering.
+- Detect layout issues like icons, multiple columns, or image-heavy formatting that might break ATS parsing.
+- If information is missing, respond with "Not enough information".
+`;
+
+    const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "x-goog-api-key": GEMINI_API_KEY
+            },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }],
+                temperature: 0.5
+            })
+        }
+    );
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Gemini API error: ${response.status} ${errorText}`);
+    }
+
+    const json = await response.json();
+    const generatedText = json.candidates?.[0]?.content?.parts?.[0]?.text || json.candidates?.[0]?.parts?.[0]?.text;
+
+    try {
+        return JSON.parse(generatedText);
+    } catch {
+        return { summary: generatedText || "Analysis unavailable" };
+    }
+}
+
 module.exports = {
     generateQuestionSuggestions,
     generateSmartReplies,
+    analyzeResumeWithGemini
 };
+

@@ -6,7 +6,7 @@ if (!GEMINI_API_KEY) {
     throw new Error("Missing GEMINI_API_KEY env variable");
 }
 
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-1.5-flash";
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "models/gemini-2.5-flash";
 
 /* ------------------------------------------------------
     Recruiter-Side Question Suggestions
@@ -27,7 +27,7 @@ Example:
 `;
 
     const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
+        `https://generativelanguage.googleapis.com/v1/${GEMINI_MODEL}:generateContent`,
         {
             method: "POST",
             headers: {
@@ -36,8 +36,7 @@ Example:
             },
             body: JSON.stringify({
                 contents: [{ parts: [{ text: prompt }] }],
-                candidateCount: 1,
-                temperature: 0.7
+                generationConfig: { temperature: 0.7 }
             })
         }
     );
@@ -48,14 +47,22 @@ Example:
     }
 
     const json = await response.json();
-    const generatedText = json.candidates?.[0]?.content?.parts?.[0]?.text || json.candidates?.[0]?.parts?.[0]?.text;
+    let generatedText = json.candidates?.[0]?.content?.parts?.[0]?.text || json.candidates?.[0]?.parts?.[0]?.text;
     if (!generatedText) {
         throw new Error("No text returned from Gemini");
     }
 
+    // Remove markdown code blocks if present
+    generatedText = generatedText.trim();
+    if (generatedText.startsWith('```json')) {
+        generatedText = generatedText.replace(/^```json\s*/, '').replace(/```\s*$/, '');
+    } else if (generatedText.startsWith('```')) {
+        generatedText = generatedText.replace(/^```\s*/, '').replace(/```\s*$/, '');
+    }
+
     try {
-        const data = JSON.parse(generatedText);
-        return data.questions;
+        const data = JSON.parse(generatedText.trim());
+        return data.questions || [];
     } catch {
         const raw = generatedText.split("\n").map(l => l.trim()).filter(Boolean);
         return raw.slice(0, numQuestions);
@@ -92,7 +99,7 @@ If general:
 `;
 
     const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
+        `https://generativelanguage.googleapis.com/v1/${GEMINI_MODEL}:generateContent`,
         {
             method: "POST",
             headers: {
@@ -101,8 +108,7 @@ If general:
             },
             body: JSON.stringify({
                 contents: [{ parts: [{ text: prompt }] }],
-                candidateCount: 1,
-                temperature: 0.6
+                generationConfig: { temperature: 0.6 }
             })
         }
     );
@@ -113,13 +119,21 @@ If general:
     }
 
     const json = await response.json();
-    const generatedText = json.candidates?.[0]?.content?.parts?.[0]?.text || json.candidates?.[0]?.parts?.[0]?.text;
+    let generatedText = json.candidates?.[0]?.content?.parts?.[0]?.text || json.candidates?.[0]?.parts?.[0]?.text;
     if (!generatedText) {
         throw new Error("No text returned from Gemini");
     }
 
+    // Remove markdown code blocks if present
+    generatedText = generatedText.trim();
+    if (generatedText.startsWith('```json')) {
+        generatedText = generatedText.replace(/^```json\s*/, '').replace(/```\s*$/, '');
+    } else if (generatedText.startsWith('```')) {
+        generatedText = generatedText.replace(/^```\s*/, '').replace(/```\s*$/, '');
+    }
+
     try {
-        const data = JSON.parse(generatedText);
+        const data = JSON.parse(generatedText.trim());
         if (data.ethicalWarning) return [data.ethicalWarning];
         if (Array.isArray(data.replies)) return data.replies.slice(0, numReplies);
     } catch {
@@ -170,7 +184,7 @@ Guidelines:
 `;
 
     const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
+        `https://generativelanguage.googleapis.com/v1/${GEMINI_MODEL}:generateContent`,
         {
             method: "POST",
             headers: {
@@ -179,7 +193,7 @@ Guidelines:
             },
             body: JSON.stringify({
                 contents: [{ parts: [{ text: prompt }] }],
-                temperature: 0.5
+                generationConfig: { temperature: 0.5 }
             })
         }
     );
@@ -190,12 +204,48 @@ Guidelines:
     }
 
     const json = await response.json();
-    const generatedText = json.candidates?.[0]?.content?.parts?.[0]?.text || json.candidates?.[0]?.parts?.[0]?.text;
+    let generatedText = json.candidates?.[0]?.content?.parts?.[0]?.text || json.candidates?.[0]?.parts?.[0]?.text;
+
+    if (!generatedText) {
+        return { summary: "Analysis unavailable" };
+    }
+
+    // Remove markdown code blocks if present
+    generatedText = generatedText.trim();
+    if (generatedText.startsWith('```json')) {
+        generatedText = generatedText.replace(/^```json\s*/, '').replace(/```\s*$/, '');
+    } else if (generatedText.startsWith('```')) {
+        generatedText = generatedText.replace(/^```\s*/, '').replace(/```\s*$/, '');
+    }
 
     try {
-        return JSON.parse(generatedText);
-    } catch {
-        return { summary: generatedText || "Analysis unavailable" };
+        const parsed = JSON.parse(generatedText.trim());
+        // Ensure all required fields exist with defaults
+        return {
+            atsScore: parsed.atsScore || 0,
+            summary: parsed.summary || "No summary available",
+            strengths: Array.isArray(parsed.strengths) ? parsed.strengths : [],
+            weaknesses: Array.isArray(parsed.weaknesses) ? parsed.weaknesses : [],
+            suggestedImprovements: Array.isArray(parsed.suggestedImprovements) ? parsed.suggestedImprovements : [],
+            missingSkills: Array.isArray(parsed.missingSkills) ? parsed.missingSkills : [],
+            tone: parsed.tone || "Not analyzed",
+            cultureFit: parsed.cultureFit || "Not analyzed",
+            layoutIssues: Array.isArray(parsed.layoutIssues) ? parsed.layoutIssues : []
+        };
+    } catch (parseError) {
+        console.error("Failed to parse Gemini response:", parseError);
+        console.error("Raw response:", generatedText);
+        return { 
+            atsScore: 0,
+            summary: generatedText || "Analysis unavailable",
+            strengths: [],
+            weaknesses: [],
+            suggestedImprovements: [],
+            missingSkills: [],
+            tone: "Not analyzed",
+            cultureFit: "Not analyzed",
+            layoutIssues: []
+        };
     }
 }
 

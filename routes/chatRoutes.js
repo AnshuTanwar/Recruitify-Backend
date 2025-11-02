@@ -4,6 +4,10 @@ const chatController = require("../controllers/chatController");
 const { protect } = require("../middlewares/authMiddleware");
 const authorizeRoles = require("../middlewares/roleMiddleware");
 
+// Get chat rooms
+router.get("/candidate-rooms", protect, authorizeRoles("Candidate"), chatController.getCandidateRooms);
+router.get("/recruiter-rooms", protect, authorizeRoles("Recruiter"), chatController.getRecruiterRooms);
+
 // recruiter initiates chat
 router.post("/initiate", protect, authorizeRoles("Recruiter"), chatController.initiateChatRoom);
 

@@ -268,3 +268,25 @@ exports.getJobApplicationStatus = async (req, res, next) => {
         next(err);
     }
 };
+
+// GET /api/candidate/resumeslist
+// returns list of candidate's uploaded resumes
+exports.getCandidateResumes = async (req, res, next) => {
+    try {
+        const candidateId = req.user._id;
+        const candidate = await Candidate.findById(candidateId).select("resumes");
+
+        if (!candidate) {
+            const err = new Error("Candidate not found");
+            err.statusCode = 404;
+            return next(err);
+        }
+
+        res.json({
+            total: candidate.resumes?.length || 0,
+            resumes: candidate.resumes || [],
+        });
+    } catch (err) {
+        next(err);
+    }
+};

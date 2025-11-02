@@ -49,8 +49,15 @@ exports.getSmartReplies = async (req, res, next) => {
             return next(err);
         }
 
+        // Try to find the application to get resume snapshot
+        const application = await JobApplication.findOne({
+            job: message.room.job._id,
+            candidate: message.room.candidate._id
+        });
+
         const resumeText =
-            message.room.candidate.resumeSnapshot ||
+            application?.resumeSnapshot ||
+            message.room.job.description ||
             "No resume text available";
 
         const replies = await generateSmartReplies({

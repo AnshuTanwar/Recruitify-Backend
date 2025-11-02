@@ -3,6 +3,40 @@ const ChatMessage = require("../models/chatMessage");
 const Job = require("../models/job");
 const Candidate = require("../models/candidate");
 
+// Get all chat rooms for a candidate
+// GET /api/chat/candidate-rooms
+exports.getCandidateRooms = async (req, res, next) => {
+    try {
+        const candidateId = req.user._id;
+
+        const rooms = await ChatRoom.find({ candidate: candidateId, isClosed: false })
+            .populate("job", "jobName company")
+            .populate("recruiter", "fullName email")
+            .sort({ lastMessageAt: -1 });
+
+        res.json({ rooms });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// Get all chat rooms for a recruiter
+// GET /api/chat/recruiter-rooms
+exports.getRecruiterRooms = async (req, res, next) => {
+    try {
+        const recruiterId = req.user._id;
+
+        const rooms = await ChatRoom.find({ recruiter: recruiterId, isClosed: false })
+            .populate("job", "jobName company")
+            .populate("candidate", "fullName email")
+            .sort({ lastMessageAt: -1 });
+
+        res.json({ rooms });
+    } catch (err) {
+        next(err);
+    }
+};
+
 // Create or get existing chat room
 // POST /api/chat/initiate
 exports.initiateChatRoom = async (req, res, next) => {
@@ -90,6 +124,7 @@ exports.createMessage = async (req, res, next) => {
         const message = await ChatMessage.create({
             room: roomId,
             sender: senderId,
+            senderRole: req.user.role, // "Recruiter" or "Candidate"
             text: text.trim(),
             isSeen: false,
         });

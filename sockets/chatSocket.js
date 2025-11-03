@@ -22,6 +22,7 @@ module.exports = (io) => {
             const message = await ChatMessage.create({
                 room: roomId,
                 sender: user._id,
+                senderRole: user.role, // "Recruiter" or "Candidate"
                 text: text.trim(),
                 isSeen: false,
             });

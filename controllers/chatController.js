@@ -187,6 +187,18 @@ exports.getMessages = async (req, res, next) => {
             return next(err);
         }
 
+        // Authorization: Check if user is part of this chat room
+        const userId = req.user._id.toString();
+        const isParticipant = 
+            room.recruiter._id.toString() === userId || 
+            room.candidate._id.toString() === userId;
+
+        if (!isParticipant) {
+            const err = new Error("Unauthorized to access this chat");
+            err.statusCode = 403;
+            return next(err);
+        }
+
         const [total, messages] = await Promise.all([
             ChatMessage.countDocuments({ room: roomId }),
             ChatMessage.find({ room: roomId })

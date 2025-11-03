@@ -36,6 +36,7 @@ module.exports = (io) => {
             io.to(roomId).emit("newMessage", {
                 _id: message._id,
                 sender: { _id: user._id, fullName: user.fullName, role: user.role },
+                senderRole: user.role, // Add senderRole for frontend compatibility
                 text: message.text,
                 createdAt: message.createdAt,
                 isSeen: false,

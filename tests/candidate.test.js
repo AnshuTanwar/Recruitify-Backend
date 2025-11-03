@@ -1,6 +1,6 @@
 const request = require("supertest");
 const path = require("path");
-const app = require("../server");
+const { app } = require("../server");
 require("./setup");
 
 const TEST_EMAIL = "jt.test.candidate@example.com";

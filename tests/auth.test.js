@@ -1,8 +1,7 @@
 const request = require("supertest");
-const app = require("../server");
+const { app } = require("../server");
 const User = require("../models/User");
 require("./setup");
-const app = require("../server");
 
 describe("Auth APIs", () => {
     const testEmail = "testuser@example.com";

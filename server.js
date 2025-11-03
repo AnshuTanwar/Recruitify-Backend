@@ -101,13 +101,15 @@ app.use("/api/candidate/resume", resumeAnalyzerRoutes);
 
 app.use(errorHandler);
 
-module.exports = app;
+// Export both app and server for testing and Socket.IO
+module.exports = { app, server, io };
 
 // Start Server
 async function startServer() {
     await connectDB();
-    app.listen(PORT, () => {
+    server.listen(PORT, () => {
         console.log(`Server running on http://localhost:${PORT}`);
+        console.log(`Socket.IO ready on port ${PORT}`);
     });
 }
 

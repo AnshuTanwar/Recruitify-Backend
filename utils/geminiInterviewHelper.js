@@ -6,6 +6,32 @@ if (!GEMINI_API_KEY) throw new Error("Missing GEMINI_API_KEY in .env");
 
 const GEMINI_MODEL = process.env.GEMINI_MODEL || "models/gemini-2.5-flash";
 
+function extractJsonString(text) {
+    if (!text) return text;
+
+    // Strip common Markdown code fences like ```json ... ```
+    let cleaned = text.trim();
+    if (cleaned.startsWith("```")) {
+        const firstNewline = cleaned.indexOf("\n");
+        const lastFence = cleaned.lastIndexOf("```\n");
+        if (firstNewline !== -1) {
+            cleaned = cleaned.substring(firstNewline + 1);
+        }
+        if (lastFence !== -1) {
+            cleaned = cleaned.substring(0, lastFence);
+        }
+        cleaned = cleaned.trim();
+    }
+
+    const firstBrace = cleaned.indexOf("{");
+    const lastBrace = cleaned.lastIndexOf("}");
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        return cleaned.substring(firstBrace, lastBrace + 1);
+    }
+
+    return cleaned;
+}
+
 async function callGemini(prompt, generationConfig = { temperature: 0.5 }) {
     const url = `https://generativelanguage.googleapis.com/v1/${GEMINI_MODEL}:generateContent`;
 
@@ -50,12 +76,16 @@ Return ONLY JSON:
     const out = await callGemini(prompt, { temperature: 0.7 });
     // try to parse JSON, fallback to lines
     try {
-        const parsed = JSON.parse(out);
+        const jsonText = extractJsonString(out);
+        const parsed = JSON.parse(jsonText);
         if (Array.isArray(parsed.questions)) return parsed.questions;
     } catch (e) { /* fallthrough */ }
 
     // fallback: split lines and return first `count`
-    const lines = out.split("\n").map(l => l.trim()).filter(Boolean);
+    const lines = out
+        .split("\n")
+        .map(l => l.trim())
+        .filter(l => l && !l.startsWith("```"));
     return lines.slice(0, count);
 }
 
@@ -83,7 +113,8 @@ Return only JSON.
     const out = await callGemini(prompt, { temperature: 0.4 });
 
     try {
-        const parsed = JSON.parse(out);
+        const jsonText = extractJsonString(out);
+        const parsed = JSON.parse(jsonText);
         return parsed;
     } catch (e) {
         // best-effort parsing: attempt to extract score and some lines
@@ -122,7 +153,8 @@ Return only JSON
     const out = await callGemini(prompt, { temperature: 0.5 });
 
     try {
-        const parsed = JSON.parse(out);
+        const jsonText = extractJsonString(out);
+        const parsed = JSON.parse(jsonText);
         return parsed;
     } catch (e) {
         return { overallScore: null, technicalFit: "", communication: "", confidence: "", recommendation: "", raw: out };

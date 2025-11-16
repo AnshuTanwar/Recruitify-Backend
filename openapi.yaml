@@ -1,0 +1,1250 @@
+openapi: 3.0.0
+info:
+  title: Recruitify API
+  version: 1.0.0
+  description: >
+    Backend API for Recruitify – authentication, candidate & recruiter flows,
+    chat, AI resume analyzer, and AI voice interview.
+
+servers:
+  - url: https://recruitify-backend-f2zw.onrender.com
+    description: Production
+  - url: http://localhost:5050
+    description: Local development
+
+tags:
+  - name: Auth
+  - name: Candidate
+  - name: Recruiter
+  - name: Interview
+  - name: ResumeAnalyzer
+  - name: Chat
+  - name: Admin
+  - name: Internal
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: Error message
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        fullName:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [Admin, Candidate, Recruiter]
+        provider:
+          type: string
+          enum: [local, google]
+
+    CandidateProfile:
+      allOf:
+        - $ref: '#/components/schemas/User'
+        - type: object
+          properties:
+            location:
+              type: string
+            bio:
+              type: string
+            phone:
+              type: string
+            experience:
+              type: number
+            skills:
+              type: array
+              items:
+                type: string
+            resumes:
+              type: array
+              items:
+                $ref: '#/components/schemas/Resume'
+
+    RecruiterProfile:
+      allOf:
+        - $ref: '#/components/schemas/User'
+        - type: object
+          properties:
+            company:
+              type: string
+            location:
+              type: string
+            phone:
+              type: string
+            bio:
+              type: string
+            isVerified:
+              type: boolean
+
+    Resume:
+      type: object
+      properties:
+        key:
+          type: string
+        originalName:
+          type: string
+        url:
+          type: string
+        uploadedAt:
+          type: string
+          format: date-time
+
+    Job:
+      type: object
+      properties:
+        id:
+          type: string
+        recruiter:
+          type: string
+        jobName:
+          type: string
+        companyName:
+          type: string
+        location:
+          type: string
+        type:
+          type: string
+        salary:
+          type: object
+          properties:
+            min:
+              type: number
+            max:
+              type: number
+            currency:
+              type: string
+            period:
+              type: string
+        experienceLevel:
+          type: string
+        education:
+          type: string
+        applicationDeadline:
+          type: string
+          format: date-time
+        skillsRequired:
+          type: array
+          items:
+            type: string
+        description:
+          type: string
+        requirements:
+          type: array
+          items:
+            type: string
+        benefits:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+          enum: [open, closed]
+
+    JobApplication:
+      type: object
+      properties:
+        id:
+          type: string
+        candidate:
+          type: string
+        job:
+          type: string
+        status:
+          type: string
+          enum: [applied, shortlisted, interview, hired, rejected]
+        resume:
+          type: object
+          properties:
+            url:
+              type: string
+            key:
+              type: string
+            originalName:
+              type: string
+        atsScore:
+          type: number
+        recruiterNotes:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    InterviewAnswerAnalysis:
+      type: object
+      properties:
+        score:
+          type: number
+          example: 8
+        strengths:
+          type: array
+          items:
+            type: string
+        weaknesses:
+          type: array
+          items:
+            type: string
+        suggestedImprovement:
+          type: string
+        overallComment:
+          type: string
+
+    FinalEvaluation:
+      type: object
+      properties:
+        overallScore:
+          type: number
+          example: 78
+        technicalFit:
+          type: string
+        communication:
+          type: string
+        confidence:
+          type: string
+        recommendation:
+          type: string
+
+    InterviewSession:
+      type: object
+      properties:
+        id:
+          type: string
+        candidate:
+          type: string
+        jobTitle:
+          type: string
+        questions:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+          enum: [in_progress, completed]
+        finalEvaluation:
+          $ref: '#/components/schemas/FinalEvaluation'
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+
+    ResumeAnalysis:
+      type: object
+      properties:
+        atsScore:
+          type: number
+          example: 85
+        summary:
+          type: string
+        strengths:
+          type: array
+          items:
+            type: string
+        weaknesses:
+          type: array
+          items:
+            type: string
+        suggestedImprovements:
+          type: array
+          items:
+            type: string
+        missingSkills:
+          type: array
+          items:
+            type: string
+
+security:
+  - bearerAuth: []
+
+paths:
+
+  ################################
+  # Auth
+  ################################
+
+  /api/auth/signup:
+    post:
+      tags: [Auth]
+      summary: Sign up as Candidate or Recruiter
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fullName, email, password, role]
+              properties:
+                fullName:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                role:
+                  type: string
+                  enum: [Candidate, Recruiter]
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+                  accessToken:
+                    type: string
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      summary: Login with email & password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+                  accessToken:
+                    type: string
+        '400':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh access token using refreshToken cookie
+      responses:
+        '200':
+          description: New access token
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout and revoke refresh token
+      responses:
+        '200':
+          description: Logged out
+
+  /api/auth/forgot-password:
+    post:
+      tags: [Auth]
+      summary: Request password reset email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+      responses:
+        '200':
+          description: Email sent if user exists
+
+  /api/auth/reset-password/{userId}/{token}:
+    post:
+      tags: [Auth]
+      summary: Reset password using token
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: token
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Password reset
+
+  ################################
+  # Candidate
+  ################################
+
+  /api/candidate/profile:
+    get:
+      tags: [Candidate]
+      summary: Get candidate profile
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Candidate profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CandidateProfile'
+        '404':
+          description: Profile not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags: [Candidate]
+      summary: Update candidate profile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fullName:
+                  type: string
+                location:
+                  type: string
+                bio:
+                  type: string
+                phone:
+                  type: string
+                experience:
+                  type: number
+                skills:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CandidateProfile'
+
+  /api/candidate/resumes:
+    post:
+      tags: [Candidate]
+      summary: Upload resume file (max 3)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [resume]
+              properties:
+                resume:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Resume uploaded
+        '400':
+          description: Validation error
+
+  /api/candidate/resumes/{resumeKey}:
+    delete:
+      tags: [Candidate]
+      summary: Delete a resume by S3 key
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: resumeKey
+          schema:
+            type: string
+          required: true
+      responses:
+        '200':
+          description: Deleted or not found
+
+  /api/candidate/resumes/{resumeKey}/url:
+    get:
+      tags: [Candidate]
+      summary: Get presigned URL for resume
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: resumeKey
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: URL returned
+
+  /api/candidate/resumeslist:
+    get:
+      tags: [Candidate]
+      summary: List candidate resumes
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of resumes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  resumes:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Resume'
+
+  /api/candidate/feed:
+    get:
+      tags: [Candidate]
+      summary: Get candidate job feed
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of jobs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Job'
+
+  /api/candidate/jobs/{jobId}/apply:
+    post:
+      tags: [Candidate]
+      summary: Apply to a job
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: jobId
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: Application created
+
+  /api/candidate/applications:
+    get:
+      tags: [Candidate]
+      summary: List candidate job applications
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Applications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/JobApplication'
+
+  /api/candidate/jobs/{jobId}:
+    get:
+      tags: [Candidate]
+      summary: Get job details (candidate view)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: jobId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Job details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+
+  /api/candidate/jobs/{jobId}/status:
+    get:
+      tags: [Candidate]
+      summary: Get application status for job
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: jobId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Status
+
+  /api/candidate/report/{recruiterId}:
+    post:
+      tags: [Candidate]
+      summary: Report a recruiter
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: recruiterId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+      responses:
+        '201':
+          description: Report created
+
+  ################################
+  # Recruiter
+  ################################
+
+  /api/recruiter/profile:
+    get:
+      tags: [Recruiter]
+      summary: Get recruiter profile
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Recruiter profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecruiterProfile'
+    put:
+      tags: [Recruiter]
+      summary: Update recruiter profile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Updated profile
+
+  /api/recruiter/jobs:
+    get:
+      tags: [Recruiter]
+      summary: List jobs created by recruiter
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Jobs with application counts
+    post:
+      tags: [Recruiter]
+      summary: Create a job
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Job'
+      responses:
+        '201':
+          description: Job created
+
+  /api/recruiter/jobs/applications:
+    get:
+      tags: [Recruiter]
+      summary: Get applications across all recruiter jobs
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Applications
+
+  /api/recruiter/jobs/{id}:
+    put:
+      tags: [Recruiter]
+      summary: Update a job
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Updated job
+    delete:
+      tags: [Recruiter]
+      summary: Delete a job
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Deleted
+
+  /api/recruiter/jobs/{id}/applications:
+    get:
+      tags: [Recruiter]
+      summary: Get applications for a job
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Applications list
+
+  /api/recruiter/jobs/{jobId}/applications:
+    get:
+      tags: [Recruiter]
+      summary: Get applications for a job (application controller)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: jobId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Applications
+
+  /api/recruiter/applications/{applicationId}/status:
+    put:
+      tags: [Recruiter]
+      summary: Update application status
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: applicationId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+      responses:
+        '200':
+          description: Updated
+
+  /api/recruiter/applications/{applicationId}/resume-url:
+    get:
+      tags: [Recruiter]
+      summary: Get resume URL for application
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: applicationId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: URL
+
+  ################################
+  # AI Voice Interview
+  ################################
+
+  /api/interview/start:
+    post:
+      tags: [Interview]
+      summary: Start an AI interview session
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [jobTitle]
+              properties:
+                jobTitle:
+                  type: string
+                count:
+                  type: integer
+                  default: 6
+      responses:
+        '200':
+          description: Session created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sessionId:
+                    type: string
+                  questions:
+                    type: array
+                    items:
+                      type: string
+
+  /api/interview/answer:
+    post:
+      tags: [Interview]
+      summary: Send an answer for analysis
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sessionId, questionIndex, answer]
+              properties:
+                sessionId:
+                  type: string
+                questionIndex:
+                  type: integer
+                question:
+                  type: string
+                answer:
+                  type: string
+      responses:
+        '200':
+          description: Analysis result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  analysis:
+                    $ref: '#/components/schemas/InterviewAnswerAnalysis'
+                  nextQuestion:
+                    type: string
+                    nullable: true
+
+  /api/interview/end:
+    post:
+      tags: [Interview]
+      summary: End interview and get final evaluation
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sessionId]
+              properties:
+                sessionId:
+                  type: string
+      responses:
+        '200':
+          description: Final evaluation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sessionId:
+                    type: string
+                  finalEvaluation:
+                    $ref: '#/components/schemas/FinalEvaluation'
+
+  /api/interview/my:
+    get:
+      tags: [Interview]
+      summary: Get current candidate's interview sessions
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Sessions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/InterviewSession'
+
+  /api/interview/{sessionId}:
+    get:
+      tags: [Interview]
+      summary: Get single interview session
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: sessionId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InterviewSession'
+
+  ################################
+  # Resume Analyzer
+  ################################
+
+  /api/candidate/resume/analyze:
+    post:
+      tags: [ResumeAnalyzer]
+      summary: Analyze resume against job description
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                jobTitle:
+                  type: string
+                jobDescription:
+                  type: string
+                resumeKey:
+                  type: string
+                newFile:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Analysis
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  analysis:
+                    $ref: '#/components/schemas/ResumeAnalysis'
+
+  ################################
+  # Chat (HTTP endpoints)
+  ################################
+
+  /api/chat/candidate-rooms:
+    get:
+      tags: [Chat]
+      summary: Get candidate chat rooms
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Rooms list
+
+  /api/chat/recruiter-rooms:
+    get:
+      tags: [Chat]
+      summary: Get recruiter chat rooms
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Rooms list
+
+  /api/chat/initiate:
+    post:
+      tags: [Chat]
+      summary: Recruiter initiates a chat room
+      security:
+        - bearerAuth: []
+      responses:
+        '201':
+          description: Room created
+
+  /api/chat/{roomId}/message:
+    post:
+      tags: [Chat]
+      summary: Send a message in a room
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: roomId
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: Message created
+
+  /api/chat/{roomId}/messages:
+    get:
+      tags: [Chat]
+      summary: Get messages in a room
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: roomId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Messages
+
+  /api/chat/{roomId}/seen:
+    put:
+      tags: [Chat]
+      summary: Mark messages as seen
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: roomId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Updated
+
+  /api/chat/{roomId}:
+    delete:
+      tags: [Chat]
+      summary: Close chat room
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: roomId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Closed
+
+  /api/chat/{applicationId}/questions:
+    get:
+      tags: [Chat]
+      summary: AI question suggestions for recruiter
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: applicationId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Questions suggested
+
+  /api/chat/{messageId}/smart-reply:
+    post:
+      tags: [Chat]
+      summary: Get smart replies for a message (candidate)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: messageId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Smart replies
+
+  ################################
+  # Admin
+  ################################
+
+  /api/admin/reports:
+    get:
+      tags: [Admin]
+      summary: Get all reports
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Reports list
+
+  /api/admin/reports/{id}/action:
+    put:
+      tags: [Admin]
+      summary: Take action on a report
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Updated
+
+  /api/admin/reports/summary:
+    get:
+      tags: [Admin]
+      summary: Get report summary
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Summary
+
+  /api/admin/analytics/summary:
+    get:
+      tags: [Admin]
+      summary: Get analytics summary
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Summary
+
+  /api/admin/analytics/trends:
+    get:
+      tags: [Admin]
+      summary: Get analytics trends
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Trends
+
+  /api/admin/overview:
+    get:
+      tags: [Admin]
+      summary: Admin overview
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Overview
+
+  /api/admin/recent-actions:
+    get:
+      tags: [Admin]
+      summary: Recent actions
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Recent actions
+
+  ################################
+  # Internal / test
+  ################################
+
+  /api/test-redis:
+    get:
+      tags: [Internal]
+      summary: Test Redis connectivity
+      responses:
+        '200':
+          description: Redis OK
+
+  /api/test-ats-scores:
+    get:
+      tags: [Internal]
+      summary: Inspect ATS scores
+      responses:
+        '200':
+          description: ATS scores
+
+  /api/test-ats-manual:
+    post:
+      tags: [Internal]
+      summary: Manually compute ATS scores for some applications
+      responses:
+        '200':
+          description: Updated applications

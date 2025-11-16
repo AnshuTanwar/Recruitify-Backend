@@ -7,6 +7,9 @@ const passport = require("passport");
 const cors = require("cors");
 const http = require("http");
 const { Server } = require("socket.io");
+const path = require("path");
+const swaggerUi = require("swagger-ui-express");
+const YAML = require("yamljs");
 
 require("./config/passport");
 require("./jobs/atsQueue");
@@ -84,6 +87,10 @@ async function connectDB() {
         process.exit(1);
     }
 }
+
+// Swagger docs
+const swaggerDocument = YAML.load(path.join(__dirname, "openapi.yaml"));
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 // Routes
 app.use("/api/auth", authRoutes);

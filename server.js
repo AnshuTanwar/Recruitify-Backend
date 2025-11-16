@@ -89,8 +89,12 @@ async function connectDB() {
 }
 
 // Swagger docs
-const swaggerDocument = YAML.load(path.join(__dirname, "openapi.yaml"));
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+try {
+    const swaggerDocument = YAML.load(path.join(__dirname, "openapi.yaml"));
+    app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+} catch (err) {
+    console.error("Failed to load Swagger docs:", err.message);
+}
 
 // Routes
 app.use("/api/auth", authRoutes);

@@ -23,6 +23,7 @@ const chatRoutes = require('./routes/chatRoutes');
 const chatAssistantRoutes = require("./routes/chatAssistantRoutes");
 const chatSmartReplyRoutes = require("./routes/chatSmartReplyRoutes");
 const resumeAnalyzerRoutes = require("./routes/resumeAnalyzerRoutes");
+const interviewRoutes = require("./routes/interviewRoutes");
 
 const errorHandler = require("./middlewares/errorHandler");
 const { protectSocket } = require("./middlewares/socketAuth");
@@ -98,10 +99,10 @@ app.use("/api/chat", chatRoutes);
 app.use("/api/chat", chatAssistantRoutes);
 app.use("/api/chat", chatSmartReplyRoutes);
 app.use("/api/candidate/resume", resumeAnalyzerRoutes);
+app.use("/api/interview", interviewRoutes);
 
 app.use(errorHandler);
 
-// Export both app and server for testing and Socket.IO
 module.exports = { app, server, io };
 
 // Start Server

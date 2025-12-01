@@ -1,364 +1,519 @@
-# 🧠 Recruitify
+# Recruitify Backend
 
-![React](https://img.shields.io/badge/Frontend-React.js-61DAFB?logo=react&logoColor=white)
-![Node.js](https://img.shields.io/badge/Backend-Node.js-339933?logo=node.js&logoColor=white)
-![Express](https://img.shields.io/badge/Framework-Express.js-000000?logo=express&logoColor=white)
-![MongoDB](https://img.shields.io/badge/Database-MongoDB-47A248?logo=mongodb&logoColor=white)
-![AWS S3](https://img.shields.io/badge/Storage-AWS%20S3-232F3E?logo=amazon-aws&logoColor=white)
-![Redis](https://img.shields.io/badge/Cache-Redis-DC382D?logo=redis&logoColor=white)
-![License](https://img.shields.io/badge/License-MIT-blue)
-![Status](https://img.shields.io/badge/Status-Active%20Development-brightgreen)
+Node.js / Express backend for the Recruitify platform – powering authentication, candidate and recruiter workflows, AI‑assisted resume analysis, AI interviews, real‑time chat, and admin analytics.
 
----
-
-Modern full‑stack recruitment platform that connects exceptional talent with outstanding opportunities.
-
-- Frontend: React 18, Vite, Tailwind CSS, React Router
-- Backend: Node.js, Express 5, MongoDB, Redis, Socket.IO
-- AI: Gemini‑powered resume analyzer, voice interview, smart chat assistance
-- Cloud: AWS S3, Render (backend), Vercel (frontend)
-- Extras: PWA support, Swagger API docs, real‑time chat, background jobs
+- Runtime: Node.js (CommonJS)
+- API: Express 5, REST, OpenAPI (Swagger UI)
+- Data: MongoDB (Mongoose 8)
+- Queues: Redis + Bull
+- Realtime: Socket.IO
+- Cloud: AWS S3
+- AI: Google Gemini API
 
 ---
 
 ## Overview
 
-Recruitify is a full‑stack recruitment platform designed to make hiring faster and more intelligent for both candidates and recruiters.
+The Recruitify backend is a production‑ready REST API that supports:
 
-- Candidates get an AI‑assisted experience with **resume analysis**, **skill‑based job feeds**, and a guided **AI voice interview**.
-- Recruiters get **ATS‑style candidate ranking**, **real‑time chat**, and **AI‑generated interview assistance** to communicate and shortlist efficiently.
-- Admins get high‑level **reports and analytics**.
+- Candidate and recruiter onboarding and profile management
+- Job posting, applications, and ATS‑style scoring
+- Real‑time candidate–recruiter chat
+- AI‑powered resume analysis and interview assistance
+- Admin‑level reports and analytics
 
-The stack is modern, production‑ready and optimized for performance, observability, and future expansion.
+The service is designed to be deployed independently (e.g. on Render), with a separate React/Vite frontend consuming this API.
+
+Default local base URL: `http://localhost:5050`.
 
 ---
 
 ## Key Features
 
+### Authentication
+
+- Email/password signup and login with bcrypt‑hashed passwords.
+- Google OAuth 2.0 login via Passport.
+- JWT access tokens (short‑lived) and refresh tokens (stored in HTTP‑only cookies).
+- Password reset flow:
+  - `/api/auth/forgot-password` generates secure reset tokens.
+  - Reset link sent via email with token and user ID.
+  - `/api/auth/reset-password/:userId/:token` updates the password.
+
 ### Candidate Experience
 
-- **Rich Candidate Profile**
-  - Upload multiple resumes (with upload limits).
-  - Manage skills, experience, location, and bio.
-- **Skill‑Based Job Feed**
-  - Personalized job recommendations based on skills and profile.
-  - Detailed job view and application tracking per job.
-- **Job Applications & Status**
-  - Apply directly to jobs from the dashboard.
-  - See application status (applied, shortlisted, interview, hired, rejected).
+- Candidate profile:
+  - View and update profile data (name, location, bio, phone, experience, skills).
+- Resume management (AWS S3):
+  - Upload up to 3 resumes per candidate.
+  - Delete resumes from S3 and from candidate profile.
+  - Generate presigned URLs for secure resume download.
+- Job discovery:
+  - Skill‑based job feed using candidate skills and open jobs.
+  - Detailed job view with recruiter info and structured salary/requirement fields.
+  - Application status endpoint per job (`hasApplied`, `status`, `atsScore`, timestamps).
 
 ### Recruiter Experience
 
-- **Job Management**
-  - Create, update, and delete job postings with rich metadata:
-    - Title, company, location, salary, experience level, education, skills, description, benefits.
-  - View all jobs with quick stats (applications, status).
-- **Application Management**
-  - See all applicants per job with ATS scores and resume snapshots.
-  - Update application status and add recruiter notes.
-  - Retrieve secure resume URLs from S3.
+- Job management:
+  - Create, update, delete job postings with rich metadata:
+    - Title, company, location, type, salary range/period, experience level, education, skills, requirements, benefits.
+  - Fetch all jobs created by the recruiter with application counts.
+- Application management:
+  - Fetch applications per job, sorted by ATS score and created time.
+  - Fetch all applications across recruiter’s jobs with filters:
+    - By ATS score band (`high`, `medium`, `low`, `very-low`, `pending`, `scored`).
+    - By application `status`.
+    - By `jobId`.
+- Integrated with ATS scoring queue (see below).
 
 ### Admin & Analytics
 
-- **Reports**
-  - Candidates can report recruiters; Admins review and take actions.
-- **Admin Analytics**
-  - High‑level overview of platform usage and activity trends.
-  - Summary endpoints for recent actions, key metrics, and trends.
+- Admin reports:
+  - Review and manage candidate reports against recruiters.
+- Admin analytics:
+  - High‑level endpoints for usage, actions, and trends (backed by analytics logs).
+- Admin users configured via a seed script.
 
 ### AI Capabilities
 
-- **AI Resume Analyzer**
-  - Candidate route: `/api/candidate/resume/analyze`.
-  - Uses Gemini + ATS logic to:
-    - Parse resume content.
-    - Score suitability vs job description.
-    - Provide strengths, weaknesses, missing skills, and improvement suggestions.
-- **AI Voice Interview**
-  - Endpoints under `/api/interview`.
-  - Frontend voice interview flow:
-    - Start interview for a job title.
-    - AI generates structured interview questions.
-    - Candidate answers via voice (SpeechRecognition) or text.
-    - Gemini analyzes each answer: score, strengths, weaknesses, comments.
-    - Final evaluation across technical fit, communication, confidence, and recommendation.
-- **AI Chat Assistance**
-  - Recruiter‑side: get AI‑generated question suggestions per application.
-  - Candidate‑side: smart reply suggestions for chat messages.
+- Resume analyzer:
+  - `/api/candidate/resume/analyze`
+  - Accepts either:
+    - An existing uploaded resume key (from S3), or
+    - A newly uploaded resume file.
+  - Extracts text from PDF/DOCX and sends it to Gemini.
+  - Returns structured analysis (ATS score, strengths, weaknesses, missing skills, suggestions, layout issues, etc.).
+- AI interview:
+  - `/api/interview/*` for starting and managing interview sessions.
+  - Start interview with job title; Gemini generates a question set.
+  - Per‑question answer analysis with per‑answer scores and feedback.
+  - Final overall evaluation across:
+    - Overall score, technical fit, communication, confidence, recommendation.
+- Chat assistants:
+  - Recruiter‑side question suggestions for a candidate based on resume/job.
+  - Candidate smart replies to recruiter messages (with ethical safeguards).
 
 ### Real‑Time Chat
 
-- **Candidate–Recruiter Chat Rooms**
-  - Socket.IO‑powered real‑time messaging.
-  - Rooms tied to a specific job, recruiter, and candidate.
-- **Seen Status & Message History**
-  - Mark messages as seen, fetch messages, close chat rooms.
-- **Clean Data Model**
-  - `ChatRoom` and `ChatMessage` models with indexes for efficient queries.
+- Socket.IO‑backed candidate–recruiter chat for each job:
+  - Create chat rooms tied to a specific recruiter, candidate, and job.
+  - Persistent message history with `ChatRoom` and `ChatMessage` models.
+- Chat features:
+  - Send/receive messages in real time.
+  - Seen status tracking.
+  - Typing indicators.
+  - Closing chats and cleanup of history.
 
 ---
 
-## Architecture
+## Architecture & Folder Structure
 
-High‑level architecture:
+High‑level backend structure:
 
-- **Frontend (Recruitify)**
-  - React 18 + Vite, Tailwind CSS.
-  - React Router 7 with role‑based protected routes.
-  - Global auth context with JWT access tokens and refresh token cookies.
-  - PWA with offline‑ready shell and installable app.
-
-- **Backend (Recruitify‑Backend)**
-  - Express 5 API with modular routes:
-    - `/api/auth`, `/api/candidate`, `/api/recruiter`, `/api/admin`, `/api/chat`, `/api/interview`, `/api/candidate/resume`.
-  - MongoDB via Mongoose (User discriminators for `Candidate`, `Recruiter`, `Admin`).
-  - Redis for caching & background jobs (ATS scoring via Bull/BullMQ).
-  - AWS S3 for resume storage.
-  - Swagger UI served on `/api-docs`.
-
-- **Security**
-  - JWT access tokens in `Authorization: Bearer ...`.
-  - Refresh tokens in HTTP‑only cookies.
-  - Role‑based access control middleware (`Candidate`, `Recruiter`, `Admin`).
-  - CORS configured for local dev and deployed frontend.
+```text
+Recruitify-Backend/
+├─ server.js                 # Express app + HTTP server + Socket.IO + routes + Swagger
+├─ openapi.yaml              # OpenAPI 3 specification
+├─ package.json
+│
+├─ config/
+│  ├─ passport.js            # Google OAuth 2.0 strategy
+│  └─ redis.js               # Redis client and configuration
+│
+├─ controllers/              # Route handlers (business logic)
+│  ├─ authController.js
+│  ├─ candidateController.js
+│  ├─ recruiterController.js
+│  ├─ recruiterJobController.js
+│  ├─ applicationCandidateController.js
+│  ├─ applicationRecruiterController.js
+│  ├─ resumeAnalyzerController.js
+│  ├─ interviewController.js
+│  ├─ chatController.js
+│  ├─ chatAssistantController.js
+│  ├─ chatSmartReplyController.js
+│  ├─ reportController.js
+│  ├─ adminReportController.js
+│  └─ adminAnalyticsController.js
+│
+├─ models/                   # Mongoose models
+│  ├─ User.js                # Base user (discriminator key: role)
+│  ├─ candidate.js           # Candidate extends User
+│  ├─ recruiter.js           # Recruiter extends User
+│  ├─ admin.js               # Admin extends User
+│  ├─ job.js
+│  ├─ jobApplication.js
+│  ├─ ChatRoom.js
+│  ├─ chatMessage.js
+│  ├─ report.js
+│  ├─ analyticsLog.js
+│  ├─ interviewSession.js
+│  └─ PasswordResetToken.js
+│
+├─ routes/                   # Express route definitions
+│  ├─ authRoutes.js
+│  ├─ candidateRoutes.js
+│  ├─ recruiterRoutes.js
+│  ├─ recruiterJobRoutes.js
+│  ├─ recruiterApplicationRoutes.js
+│  ├─ reportRoutes.js
+│  ├─ adminReportRoutes.js
+│  ├─ adminAnalyticsRoutes.js
+│  ├─ chatRoutes.js
+│  ├─ chatAssistantRoutes.js
+│  ├─ chatSmartReplyRoutes.js
+│  ├─ resumeAnalyzerRoutes.js
+│  ├─ interviewRoutes.js
+│  └─ testRoutes.js          # Health/internal testing routes
+│
+├─ middlewares/
+│  ├─ auth.js                # Legacy JWT auth middleware
+│  ├─ authMiddleware.js      # Current JWT auth (protect)
+│  ├─ roleMiddleware.js      # Role-based access control
+│  ├─ socketAuth.js          # JWT auth for Socket.IO
+│  ├─ upload.js              # Upload handling (Multer)
+│  └─ errorHandler.js        # Centralized error handler
+│
+├─ jobs/
+│  └─ atsQueue.js            # Bull queue processor for ATS scoring
+│
+├─ queues/
+│  └─ resumeQueue.js         # Bull queue instance for resume processing
+│
+├─ sockets/
+│  └─ chatSocket.js          # Socket.IO event handlers
+│
+├─ utils/
+│  ├─ s3Helper.js            # AWS S3 upload, delete, presigned URL
+│  ├─ resumeParser.js        # Extract text from resume files
+│  ├─ atsScorerV2.js         # ATS score computation
+│  ├─ jwt.js                 # Access/refresh token helpers
+│  ├─ sendEmail.js           # Nodemailer wrapper for password reset
+│  ├─ geminiHelper.js        # General Gemini helpers (resume, chat)
+│  └─ geminiInterviewHelper.js   # Gemini helpers for interviews
+│
+├─ tests/
+│  └─ ...                    # Jest + supertest setup and API tests
+│
+└─ seedAdmin.js              # Script to seed an initial admin user
+```
 
 ---
 
 ## Tech Stack
 
-**Frontend**
+### Core
 
-- React 18, Vite
-- Tailwind CSS
-- React Router 7
-- Framer Motion
-- lucide‑react
-- Socket.IO Client
-- PWA via `vite-plugin-pwa`
+- **Node.js** (CommonJS modules)
+- **Express 5** for HTTP API
+- **MongoDB + Mongoose 8** for data persistence
+- **Redis** + **Bull** queues for background processing
+- **Socket.IO** for real‑time messaging
+- **Swagger UI** + **YAML** (OpenAPI 3 spec)
 
-**Backend**
+### Integrations
 
-- Node.js, Express 5
-- MongoDB, Mongoose 8
-- Redis, Bull/BullMQ
-- Socket.IO
-- Passport (Google OAuth)
-- JWT authentication
-- AWS S3 SDK
-- Swagger UI + YAML OpenAPI spec
-- Gemini integration (for AI features)
+- **AWS S3** via `@aws-sdk/client-s3` for resume storage.
+- **Google OAuth 2.0** via `passport-google-oauth20`.
+- **Google Gemini API** via `node-fetch` for:
+  - Resume analysis
+  - Interview questions and evaluation
+  - Recruiter question suggestions
+  - Candidate smart replies
+- **Nodemailer** (Gmail service) for password reset email delivery.
 
-**Deployment**
+### Testing
 
-- Frontend: Vercel
-- Backend: Render
-- Assets: AWS S3
-
----
-
-## Live Demo & API Docs
-
-- Frontend: `https://recruitify-pi.vercel.app`
-- Backend: `https://recruitify-backend-f2zw.onrender.com`
-- API Docs (Swagger UI): `https://recruitify-backend-f2zw.onrender.com/api-docs`
-  (also linked in the frontend footer as “API Docs”)
-
----
-
-## Project Structure
-
-This repository (`Recruitify`) holds the **frontend**. The backend lives in a separate repo.
-
-```text
-Recruitify-Final Year/
-├─ Recruitify/                 # Frontend (this repo)
-│  ├─ src/
-│  │  ├─ App.jsx               # Routing, layouts
-│  │  ├─ services/apiService.js
-│  │  ├─ features/
-│  │  │  ├─ auth/
-│  │  │  ├─ candidate/         # dashboards, voice interview, resume analyzer
-│  │  │  └─ recruiter/
-│  │  ├─ components/
-│  │  │  ├─ layout/Header.jsx
-│  │  │  ├─ layout/Footer.jsx
-│  │  │  └─ common/AnimatedBackground.jsx
-│  ├─ public/
-│  │  ├─ pwa-192x192.png
-│  │  ├─ pwa-512x512.png
-│  │  └─ pwa-maskable-512x512.png
-│  ├─ vite.config.js
-│  ├─ index.html
-│  └─ package.json
-└─ Recruitify-Backend/         # Backend API (separate repo)
-```
-
-Backend repository:
-[`https://github.com/AnshuTanwar/Recruitify-Backend`](https://github.com/AnshuTanwar/Recruitify-Backend)
+- **Jest**
+- **supertest**
 
 ---
 
 ## Getting Started
 
-### 1. Clone Repositories
+### Prerequisites
+
+- Node.js **18+** (recommended for current dependency versions)
+- npm
+- Running MongoDB instance (local or cloud)
+- Running Redis instance (local or cloud)
+- AWS S3 bucket (for resume storage)
+- Google Cloud project with Gemini API enabled
+- Google OAuth 2.0 credentials (Client ID/Secret) for sign‑in
+- Gmail account (or similar) for password reset emails
+
+### Installation
+
+From the `Recruitify-Backend` directory:
 
 ```bash
-# Frontend
-git clone https://github.com/AnshuTanwar/Recruitify.git
-cd Recruitify
-
-# Backend (in a separate folder)
-git clone https://github.com/AnshuTanwar/Recruitify-Backend.git
-cd Recruitify-Backend
+npm install
 ```
 
-### 2. Backend Setup
+### Environment Variables
 
-1. Install dependencies:
-
-   ```bash
-   cd Recruitify-Backend
-   npm install
-   ```
-
-2. Create `.env` in `Recruitify-Backend` (see [Environment Variables](#environment-variables)).
-
-3. Start backend locally:
-
-   ```bash
-   npm run production     # or: npm start (with nodemon)
-   ```
-
-   Backend defaults to `http://localhost:5050`.
-
-### 3. Frontend Setup
-
-1. Install dependencies:
-
-   ```bash
-   cd Recruitify
-   npm install
-   ```
-
-2. Configure API base URL in `src/services/apiService.js` if needed  
-   (e.g. point to local `http://localhost:5050` or deployed Render URL).
-
-3. Run development server:
-
-   ```bash
-   npm run dev
-   ```
-
-4. Open the app at `http://localhost:5173`.
-
----
-
-## Environment Variables
-
-Environment variables are primarily for the backend.  
-In `Recruitify-Backend/.env`:
+Create a `.env` file in `Recruitify-Backend/` with at least the following variables:
 
 ```bash
 # Server
 PORT=5050
-MONGO_URI=your_mongodb_connection_string
+MONGO_URI=mongodb+srv://...
+
+# Client / CORS / Redirects
+CLIENT_ORIGINS=http://localhost:5173
+CLIENT_URL=http://localhost:5173          # Used for Google OAuth success redirect
+CLIENT_URI=http://localhost:5173          # Used for password reset links
 
 # JWT
 JWT_SECRET=your_access_token_secret
 JWT_REFRESH_SECRET=your_refresh_token_secret
-
-# Client
-CLIENT_URI=http://localhost:5173
+NODE_ENV=development                       # "production" in production
 
 # Google OAuth
 GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
 
-# Email
-EMAIL_HOST=...
-EMAIL_PORT=...
-EMAIL_USER=...
-EMAIL_PASSWORD=...
+# Email (password reset via Gmail/Nodemailer)
+EMAILJS_USER=your_gmail_address@example.com
+EMAILJS_PASSWORD=your_gmail_app_password
 
 # AWS S3
 AWS_REGION=your_region
 AWS_ACCESS_KEY_ID=your_access_key
 AWS_SECRET_ACCESS_KEY=your_secret_key
 S3_BUCKET=your_bucket_name
-S3_PUBLIC_URL=https://your-bucket.s3.amazonaws.com
+S3_PUBLIC_URL=https://your-bucket.s3.amazonaws.com   # optional override
 
 # Redis
-REDIS_HOST=...
-REDIS_PORT=...
-REDIS_USERNAME=...
-REDIS_PASSWORD=...
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_USERNAME=default                              # if your Redis requires it
+REDIS_PASSWORD=                                     # if needed
 
 # Gemini / AI
-GEMINI_API_KEY=your_gemini_key
-GEMINI_MODEL=your_model_name
+GEMINI_API_KEY=your_gemini_api_key
+GEMINI_MODEL=models/gemini-2.5-flash                # or a compatible model
+
+# Admin seeding (used by seedAdmin.js)
+ADMIN_NAME=Platform Admin
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD=strong-password
 ```
 
-Do not commit real secret values to Git.
+Do **not** commit real secrets to version control.
 
----
+### Running Locally
 
-## PWA Support
-
-The frontend is configured as a Progressive Web App:
-
-- Uses `vite-plugin-pwa`.
-- Manifest and icons defined in [vite.config.js](cci:7://file:///Users/aanshutanwar/Developer/Recruitify-Final%20Year/Recruitify/vite.config.js:0:0-0:0) and [/public](cci:7://file:///Users/aanshutanwar/Developer/Recruitify-Final%20Year/Recruitify/public:0:0-0:0).
-- The app can be:
-  - Installed on desktop and mobile.
-  - Launched in standalone mode.
-- Workbox configuration:
-  - Caches static assets.
-  - Uses a network‑first strategy for backend API calls.
-
-To test locally:
+From `Recruitify-Backend/`:
 
 ```bash
-npm run build
-npm run preview
-# open the preview URL, then check Application > Manifest in DevTools
+# Development (auto‑reload with nodemon)
+npm start
+
+# Production style (plain Node)
+npm run production
 ```
 
+By default the server listens on `http://localhost:5050`.
+
+Swagger UI will be available at:
+
+- `http://localhost:5050/api-docs`
+
+### Seeding an Admin User
+
+To create an initial admin account (using the env vars above):
+
+```bash
+npm run seed:admin
+```
+
+This connects to `MONGO_URI`, checks if `ADMIN_EMAIL` already exists, and if not, creates an admin with the provided credentials.
+
+### Running Tests
+
+```bash
+npm test
+```
+
+Tests use Jest + supertest to hit HTTP endpoints. Ensure your test database configuration (if separate from production) is correctly set up.
+
 ---
 
-## Swagger / API Documentation
+## API & Routing
 
-Backend serves Swagger UI at:
+The main routes are wired in [server.js](cci:7://file:///Users/aanshutanwar/Developer/Recruitify-Final-Year/Recruitify-Backend/server.js:0:0-0:0):
 
-- `/api-docs` (e.g. `https://recruitify-backend-f2zw.onrender.com/api-docs`)
+- **Auth**
+  - `POST /api/auth/signup`
+  - `POST /api/auth/login`
+  - `POST /api/auth/refresh`
+  - `POST /api/auth/logout`
+  - `POST /api/auth/forgot-password`
+  - `POST /api/auth/reset-password/:userId/:token`
+  - `GET  /api/auth/google` (Passport Google OAuth entry)
+  - `GET  /api/auth/google/callback`
 
-The OpenAPI spec ([openapi.yaml](cci:7://file:///Users/aanshutanwar/Developer/Recruitify-Final%20Year/Recruitify-Backend/openapi.yaml:0:0-0:0)) documents:
+- **Candidate**
+  - `/api/candidate/profile` (GET/PUT)
+  - `/api/candidate/resumes` (upload/delete, presigned URL)
+  - `/api/candidate/jobs` (job feed and details)
+  - `/api/candidate/jobs/:jobId/status`
+  - `/api/candidate` + `/api/candidate/resume/*` for reports and resume analyzer
 
-- Authentication endpoints (`/api/auth/*`)
-- Candidate APIs (`/api/candidate/*`)
-- Recruiter APIs (`/api/recruiter/*`)
-- Admin APIs (`/api/admin/*`)
-- Chat and AI endpoints (`/api/chat/*`)
-- AI resume analyzer and interview (`/api/candidate/resume/analyze`, `/api/interview/*`)
-- Test/internal routes (tagged as `Internal`)
+- **Recruiter**
+  - `/api/recruiter` (profile and related)
+  - `/api/recruiter/jobs` (CRUD + listing)
+  - `/api/recruiter/jobs/:id/applications`
+  - `/api/recruiter/jobs/applications` (aggregated applications with filters)
+  - `/api/recruiter/*` for additional application flows
+
+- **Admin**
+  - `/api/admin/reports/*`
+  - `/api/admin/analytics/*`
+
+- **Chat & AI**
+  - `/api/chat/*` (rooms, messages, seen state, close)
+  - `/api/chat/:applicationId/suggest-questions` (AI recruiter assistant)
+  - `/api/chat/:messageId/smart-reply` (AI candidate smart replies)
+
+- **Resume Analyzer**
+  - `/api/candidate/resume/analyze`
+
+- **Interview**
+  - `/api/interview/start`
+  - `/api/interview/answer`
+  - `/api/interview/end`
+  - `/api/interview/my`
+  - `/api/interview/:sessionId`
+
+- **Internal/Test**
+  - `/api/*` via [testRoutes.js](cci:7://file:///Users/aanshutanwar/Developer/Recruitify-Final-Year/Recruitify-Backend/Users/aanshutanwar/Developer/Recruitify-Final-Year/Recruitify-Backend/routes/testRoutes.js:0:0-0:0) for health checks or internal diagnostics.
+
+For full request/response schemas and additional routes, see [[openapi.yaml](cci:7://file:///Users/aanshutanwar/Developer/Recruitify-Final-Year/Recruitify-Backend/openapi.yaml:0:0-0:0)](./openapi.yaml) and `/api-docs`.
 
 ---
 
-## Development Notes
+## Authentication & Security
 
-- **Role‑based routing** on the frontend ensures candidates, recruiters, and admins see only their own dashboards.
-- **Auth flow**:
-  - Access tokens in memory + `Authorization` header.
-  - Refresh tokens in HTTP‑only cookies for better security.
-- **Background jobs**:
-  - ATS scoring runs asynchronously using Redis/Bull, preventing long request times.
-- **AI responses**:
-  - Gemini responses are parsed server‑side (including Markdown code fence handling) before sending structured JSON to the frontend.
+- **Access tokens**
+  - JWT, signed with `JWT_SECRET`.
+  - Returned on login/signup and stored client‑side (e.g. in memory/local storage).
+  - Passed on each request via `Authorization: Bearer <token>` header.
+
+- **Refresh tokens**
+  - JWT, signed with `JWT_REFRESH_SECRET`.
+  - Stored as HTTP‑only cookies (`refreshToken`).
+  - `POST /api/auth/refresh` issues new access tokens if the refresh token is valid and still registered against the user.
+
+- **Role‑based access control**
+  - Base `User` model uses `role` discriminator: `Admin`, `Candidate`, `Recruiter`.
+  - [authMiddleware.protect](cci:1://file:///Users/aanshutanwar/Developer/Recruitify-Final-Year/Recruitify-Backend/middlewares/auth.js:4:0-25:1) resolves the user from JWT.
+  - `roleMiddleware(authorizeRoles(...))` used on routes that require specific roles.
+
+- **Socket authentication**
+  - For Socket.IO, clients must connect with:
+    - `io(..., { auth: { token: "<access_token>" } })`
+  - [middlewares/socketAuth.js](cci:7://file:///Users/aanshutanwar/Developer/Recruitify-Final-Year/Recruitify-Backend/middlewares/socketAuth.js:0:0-0:0) verifies the JWT and attaches `socket.user`.
+
+- **Error handling**
+  - Central `errorHandler` middleware formats errors consistently as:
+    - `{ success: false, message: "..." }`
+  - Logs server‑side stack/message for debugging.
+
+---
+
+## Background Jobs & Queues
+
+### ATS Scoring ([jobs/atsQueue.js](cci:7://file:///Users/aanshutanwar/Developer/Recruitify-Final-Year/Recruitify-Backend/jobs/atsQueue.js:0:0-0:0))
+
+- Queue name: `ats-processing` (Bull).
+- Powered by Redis via `redisConfig`.
+- Flow:
+  1. Resume binary is fetched from S3 ([getFileBufferFromS3](cci:1://file:///Users/aanshutanwar/Developer/Recruitify-Final-Year/Recruitify-Backend/utils/s3Helper.js:63:0-77:1)).
+  2. Text is extracted (`resumeParser`).
+  3. ATS score is computed (`computeATSScoreV2`).
+  4. Result and a snapshot of the resume text are stored on the `JobApplication` document.
+
+The queue worker is wired up on server startup via `require("./jobs/atsQueue")` in [server.js](cci:7://file:///Users/aanshutanwar/Developer/Recruitify-Final-Year/Recruitify-Backend/server.js:0:0-0:0).
+
+### Resume Queue ([queues/resumeQueue.js](cci:7://file:///Users/aanshutanwar/Developer/Recruitify-Final-Year/Recruitify-Backend/queues/resumeQueue.js:0:0-0:0))
+
+- Queue name: `resume-processing`.
+- Currently set up with event listeners; usable for future heavy resume tasks.
+- Shares the same Redis config.
+
+Ensure Redis is reachable before starting the app; `connectRedis()` is called at startup and logs connection status.
+
+---
+
+## Realtime Chat & Socket.IO
+
+Socket.IO is initialized in [server.js](cci:7://file:///Users/aanshutanwar/Developer/Recruitify-Final-Year/Recruitify-Backend/server.js:0:0-0:0) and wired through [sockets/chatSocket.js](cci:7://file:///Users/aanshutanwar/Developer/Recruitify-Final-Year/Recruitify-Backend/sockets/chatSocket.js:0:0-0:0).
+
+### Connection
+
+- Server:
+  - Initializes `io` with the same CORS origins as Express.
+  - Applies [protectSocket](cci:1://file:///Users/aanshutanwar/Developer/Recruitify-Final-Year/Recruitify-Backend/middlewares/socketAuth.js:3:0-18:2) middleware for JWT authentication.
+
+- Client:
+  - Connect with:
+    - `io(SERVER_URL, { auth: { token: accessToken } })`
+
+### Events
+
+- **joinRoom**: join a specific chat room by ID.
+- **sendMessage**: send messages (`{ roomId, text }`); messages are persisted.
+- **markSeen**: mark messages from the other user as seen.
+- **typing / stopTyping**: typing indicators.
+- **closeChat**: delete all messages and the room; emits `chatClosed`.
+- **disconnect**: logs disconnection.
+
+---
+
+## AI Integrations
+
+Gemini API is used via [utils/geminiHelper.js](cci:7://file:///Users/aanshutanwar/Developer/Recruitify-Final-Year/Recruitify-Backend/utils/geminiHelper.js:0:0-0:0) and [utils/geminiInterviewHelper.js](cci:7://file:///Users/aanshutanwar/Developer/Recruitify-Final-Year/Recruitify-Backend/utils/geminiInterviewHelper.js:0:0-0:0):
+
+- **Question suggestions**:
+  - For recruiters to get tailored questions for a candidate and job.
+- **Smart replies**:
+  - For candidates to get suggested replies to recruiter messages.
+  - Includes checks to avoid answering direct technical exam‑style questions automatically.
+- **Resume analyzer**:
+  - Deep ATS‑oriented evaluation of resume + job description.
+- **Interview assistant**:
+  - Question generation, per‑answer analysis, and final evaluation.
+
+Configuration:
+
+- `GEMINI_API_KEY` must be set and valid.
+- `GEMINI_MODEL` defaults to `models/gemini-2.5-flash` but can be overridden.
+
+---
+
+## Deployment Notes
+
+- **CORS**:
+  - Configure `CLIENT_ORIGINS` as a comma‑separated list of allowed frontend origins.
+  - Example:
+    - `CLIENT_ORIGINS=https://your-frontend.app,https://admin.your-frontend.app`
+- **Environment**:
+  - Set `NODE_ENV=production` in production.
+  - Ensure JWT secrets, Gemini API key, Redis password, Mongo URI, and AWS credentials are provided securely.
+- **HTTPS**:
+  - In production, deploy behind HTTPS so secure cookies and OAuth redirects work correctly.
+- **Scaling**:
+  - Application servers can scale horizontally.
+  - Bull queues will share work via Redis; ensure Redis is sized appropriately.
+  - Socket.IO scaling may require a shared adapter (e.g. Redis adapter) if you run multiple instances.
 
 ---
 
 ## License
 
-This project includes a `LICENSE` file in the repository root.  
-Please refer to that file for the exact license terms.
+This backend is open source. Refer to the repository’s `LICENSE` file (or the `license` field in [package.json](cci:7://file:///Users/aanshutanwar/Developer/Recruitify-Final-Year/Recruitify-Backend/package.json:0:0-0:0)) for the exact license terms.
 
-
+```

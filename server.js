@@ -33,8 +33,23 @@ const { protectSocket } = require("./middlewares/socketAuth");
 
 const app = express();
 
+function getOrigins() {
+    const raw = process.env.CLIENT_ORIGINS;
+    if (!raw) {
+        // fallback default(s)
+        console.warn(
+            "Warning: CLIENT_ORIGINS not set. Falling back to http://localhost:5173 for development. " +
+            "Set CLIENT_ORIGINS in your environment to a comma-separated list of allowed client URLs for security."
+        );
+        return ["http://localhost:5173"];
+    }
+    return raw.split(",").map((s) => s.trim()).filter(Boolean);
+}
+
+const allowedOrigins = getOrigins();
+
 const corsOptions = {
-    origin: ['http://localhost:5173', 'https://recruitify-pi.vercel.app'],
+    origin: allowedOrigins,
     credentials: true,
     optionsSuccessStatus: 200,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -58,7 +73,7 @@ app.use(passport.initialize());
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: ["http://localhost:5173", "https://recruitify-pi.vercel.app"],
+        origin: allowedOrigins,
         credentials: true,
     },
 });

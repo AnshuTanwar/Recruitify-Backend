@@ -84,7 +84,11 @@ exports.signup = async (req, res, next) => {
             maxAge: 7 * 24 * 60 * 60 * 1000
         });
 
-        res.status(201).json({ user, accessToken });
+        const safeUser = user.toObject();
+        delete safeUser.password;
+        delete safeUser.refreshTokens;
+
+        res.status(201).json({ user: safeUser, accessToken });
     } catch (err) {
         next(err);
     }
@@ -124,7 +128,11 @@ exports.login = async (req, res, next) => {
             maxAge: 7 * 24 * 60 * 60 * 1000
         });
 
-        res.json({ user, accessToken });
+        const safeUser = user.toObject();
+        delete safeUser.password;
+        delete safeUser.refreshTokens;
+
+        res.json({ user: safeUser, accessToken });
     } catch (err) {
         next(err);
     }

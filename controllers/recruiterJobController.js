@@ -163,6 +163,14 @@ exports.deleteJob = async (req, res, next) => {
             return next(error);
         }
 
+        await Promise.all([
+            JobApplication.deleteMany({ job: jobId }),
+            Candidate.updateMany(
+                { appliedJobs: jobId },
+                { $pull: { appliedJobs: jobId } }
+            )
+        ]);
+
         res.json({ message: "Job deleted successfully" });
     } catch (err) {
         next(err);
